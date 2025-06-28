@@ -15,4 +15,11 @@ tqdm
 typer
 -e .
 matplotlib
+munch
+huggingface-hub
+accelerate
+bitsandbytes
+requests
+pyyaml
+transformers
 

@@ -1,5 +1,3 @@
-
-
 def no_game_prompt(options: list,
                    sentence: str):
 
