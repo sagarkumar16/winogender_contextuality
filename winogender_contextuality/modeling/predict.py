@@ -1,5 +1,4 @@
 from pathlib import Path
-
 from loguru import logger
 from tqdm import tqdm
 import typer
@@ -25,6 +24,7 @@ Sagar Kumar, 2025
 """
 
 # TODO: Fill in type annotations
+# TODO: Finish replacing print with logger
 
 app = typer.Typer()
 
@@ -57,12 +57,13 @@ client = InferenceClient(api_key=API_TOKEN, headers = headers)
 def query(payload):
     try:
         response = client.chat.completions.create(
-                    model=config.model.model_name,
+                    model=params.model.model_name,
                     messages=payload,
                     #response_format={'type': 'json'},
                     **llm_params
                 ).choices[0]#.message.content
     except:
+        logger.warning(f"Failed to query {payload}")
         return None
     return response
 
@@ -75,14 +76,17 @@ def api_hit(chat, options, first_target_phrase):
         response = query(chat)  # query({"inputs": chat, "parameters": llm_params, "options": {"use_cache": False}})
 
         if response is None:
+            logger.debug(f"Response JSON Error")
             print('CAUGHT JSON ERROR')
             continue
 
 
         if type(response) == dict:
+            logger.warning(f"EXCEPTION: {response}")
             print("AN EXCEPTION: ", response)
             time.sleep(2.5)
             if "Inference Endpoints" in response['error']:
+                logger.warning(f"Rate Limit Reached for {response['error']['request_id']}")
                 print("HOURLY RATE LIMIT REACHED")
                 time.sleep(450)
             continue
@@ -91,17 +95,20 @@ def api_hit(chat, options, first_target_phrase):
             outputs = [response.logprobs.content[i].top_logprobs for i in range(len(response.logprobs.content))]
             token_outputs = [[o.token for o in output] for output in outputs]
         except:
+            logger.warning(f"No logprobs found for {response}.")
             continue
 
         if len([i for i in range(len(token_outputs)) if
                 any(phrase == token_outputs[i][0] for phrase in first_target_phrase)]) != 0:
             overloaded = 0
         else:
-            print("FIRST PHRASE NOT FOUND IN index 0 POSITION IN ANY TOKEN POSITION")
-            print(f"Response: {response.message.content}")
-            print("Output tokens:")
-            for o in token_outputs:
-                print(o, first_target_phrase, any(phrase == o for phrase in first_target_phrase))
+            logger.warning("FIRST PHRASE NOT FOUND IN index 0 POSITION IN ANY TOKEN POSITION")
+            logger.debug(f"Response: {response.message.content}")
+            logger.debug("Output tokens:")
+            for i, o in enumerate(token_outputs):
+                token = o[0]
+                match = any(phrase == token for phrase in first_target_phrase)
+                logger.debug(f"[{i}] Token: '{token}' | Match: {match} | Full: {o}")
 
         # if any(option in response.message.content for option in options):
         #     overloaded=0
@@ -110,7 +117,7 @@ def api_hit(chat, options, first_target_phrase):
 
 
 def get_response(chat, options, first_target_phrase):
-    response = API_hit(chat, options, first_target_phrase)[0]
+    response = api_hit(chat, options, first_target_phrase)[0]
     response_split = response.message.content.split("'")
     for opt in options:
         try:
@@ -167,10 +174,10 @@ def encode_decode_options(options):
     return first_target_id_dict
 
 
-def get_probability_dict(options, prompt, first_target_id_dict, temperature=config.params.temperature,
+def get_probability_dict(options, prompt, first_target_id_dict, temperature=params.params.temperature,
                          epsilon=np.finfo(float).eps):
     first_target_phrase = [first_target_id_dict[option] for option in options]
-    response, outputs, token_outputs = API_hit(chat=prompt, options=options, first_target_phrase=first_target_phrase)
+    response, outputs, token_outputs = api_hit(chat=prompt, options=options, first_target_phrase=first_target_phrase)
     probability_dict = {opt: -np.inf for opt in options}
 
     # find the token location where both options exist.
