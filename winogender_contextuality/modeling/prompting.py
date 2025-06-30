@@ -16,7 +16,8 @@ def no_game_prompt(options: list,
                      "do not reorder the data.")
 
     USER_PROMPT = (f"Given this passage: *{sentence}*\n"
-                   f"Answer by saying which of the following options should replace the [BLANK] token: {options}.")
+                   "In a single word, answer by saying which of the following options "
+                   f"should replace the [BLANK] token: {options}.")
 
 
     return SYSTEM_PROMPT, USER_PROMPT
