@@ -6,7 +6,7 @@ import requests
 import time
 import yaml
 from munch import munchify
-from huggingface_hub import InferenceClient
+from huggingface_hub import InferenceClient, ChatCompletionOutputLogprob
 from transformers import AutoTokenizer
 import numpy as np
 import utils as ut
@@ -34,15 +34,14 @@ params = munchify(doc)
 # set temperature to 0 for deterministic outcomes
 temperature = params.params.temperature
 if temperature == 0:
-    llm_params = {#"do_sample": False,
+    llm_params = {
             "max_tokens": 8,
             'logprobs': True,
             'top_logprobs': 4
             }
 else:
-    llm_params = {#"do_sample": True,
+    llm_params = {
             "temperature": temperature,
-            #"top_k": 10,
             "max_tokens": 8,
             'logprobs': True,
             'top_logprobs': 4
@@ -52,38 +51,47 @@ API_TOKEN = params.model.API_TOKEN
 headers = {"Authorization": f"Bearer {API_TOKEN}", "x-use-cache": 'false'}
 API_URL = "https://api-inference.huggingface.co/models/"+params.model.model_name
 tokenizer = AutoTokenizer.from_pretrained(params.model.model_name, token=API_TOKEN)
-client = InferenceClient(api_key=API_TOKEN, headers = headers)
+client = InferenceClient(api_key=API_TOKEN, headers=headers)
 
-def query(payload):
+def query(payload: str) -> ChatCompletionOutputLogprob | None:
+    """
+    Uses InferenceClient to query the model given a properly formatted payload.
+
+    :param payload: Prompt string properly formatted for the model
+    :return: string in JSON format
+    """
+
     try:
+
         response = client.chat.completions.create(
                     model=params.model.model_name,
                     messages=payload,
-                    #response_format={'type': 'json'},
                     **llm_params
-                ).choices[0]#.message.content
-    except:
-        logger.warning(f"Failed to query {payload}")
+                ).choices[0]
+
+    except: # Should we get rid of this generic exception?
+        logger.error(f"Failed to query {payload}")
         return None
+
     return response
 
-
-def api_hit(chat, options, first_target_phrase):
+# TODO: chat for this and meta-prompting should be imported from files
+def api_hit(chat,
+            options,
+            first_target_phrase):
     """Generate a response from the model."""
 
     overloaded = 1
     while overloaded == 1:
-        response = query(chat)  # query({"inputs": chat, "parameters": llm_params, "options": {"use_cache": False}})
+        response = query(chat)
 
         if response is None:
             logger.debug(f"Response JSON Error")
             print('CAUGHT JSON ERROR')
             continue
 
-
         if type(response) == dict:
             logger.warning(f"EXCEPTION: {response}")
-            print("AN EXCEPTION: ", response)
             time.sleep(2.5)
             if "Inference Endpoints" in response['error']:
                 logger.warning(f"Rate Limit Reached for {response['error']['request_id']}")
@@ -92,7 +100,8 @@ def api_hit(chat, options, first_target_phrase):
             continue
 
         try:
-            outputs = [response.logprobs.content[i].top_logprobs for i in range(len(response.logprobs.content))]
+            lp = response.logprobs.content
+            outputs = [lp[i].top_logprobs for i in range(len(lp))]
             token_outputs = [[o.token for o in output] for output in outputs]
         except:
             logger.warning(f"No logprobs found for {response}.")
@@ -102,6 +111,7 @@ def api_hit(chat, options, first_target_phrase):
                 any(phrase == token_outputs[i][0] for phrase in first_target_phrase)]) != 0:
             overloaded = 0
         else:
+            # first_target_phrase is probably the check to make sure the model answered correctly
             logger.warning("FIRST PHRASE NOT FOUND IN index 0 POSITION IN ANY TOKEN POSITION")
             logger.debug(f"Response: {response.message.content}")
             logger.debug("Output tokens:")
@@ -110,12 +120,19 @@ def api_hit(chat, options, first_target_phrase):
                 match = any(phrase == token for phrase in first_target_phrase)
                 logger.debug(f"[{i}] Token: '{token}' | Match: {match} | Full: {o}")
 
-        # if any(option in response.message.content for option in options):
-        #     overloaded=0
-
     return [response, outputs, token_outputs]
 
+# Ok what the fresh hell is this
+def encode_decode_options(options):
+    target_phrase = [[tokenizer.decode(target_token_id, skip_special_tokens=True) for target_token_id in
+                      tokenizer.encode(option, add_special_tokens=False)] for option in options]
+    first_target_phrase = [target[0] for target in target_phrase]
+    logger.info(f"Options tokens: {target_phrase}")
+    logger.info(f"first options tokens: {first_target_phrase}")
+    first_target_id_dict = {option: first_target_phrase[i] for i, option in enumerate(options)}
+    return first_target_id_dict
 
+@app.command()
 def get_response(chat, options, first_target_phrase):
     response = api_hit(chat, options, first_target_phrase)[0]
     response_split = response.message.content.split("'")
@@ -127,7 +144,7 @@ def get_response(chat, options, first_target_phrase):
     # print(response_split[index])
     return response_split[index]
 
-
+@app.command()
 def get_meta_response(chat):
     """Generate a response from the Llama model."""
 
@@ -136,19 +153,19 @@ def get_meta_response(chat):
         response = query(chat)  # query({"inputs": chat, "parameters": llm_params, "options": {"use_cache": False}})
         # print(response)
         if response == None:
-            print('CAUGHT JSON ERROR')
+            logger.debug('CAUGHT JSON ERROR')
             continue
 
         if type(response) == dict:
-            print("AN EXCEPTION")
+            logger.debug("AN EXCEPTION")
             time.sleep(2.5)
             if "Inference Endpoints" in response['error']:
-                print("HOURLY RATE LIMIT REACHED")
+                logger.warning("HOURLY RATE LIMIT REACHED")
                 time.sleep(900)
 
 
         elif len(response.message.content.split(";")) < 2:
-            print(f"RESPONSE SPLIT: {response.message.content.split(';')}")
+            logger.info(f"RESPONSE SPLIT: {response.message.content.split(';')}")
             overloaded = 1
         # if 'value' in response['generated_text']:
         #     overloaded=0
@@ -158,24 +175,18 @@ def get_meta_response(chat):
         #     if len(response_split)<2:
         #         overloaded = 1
     response_split = response.message.content.split(";")
-    print(response_split[0])
-    # time.sleep(5)
+    logger.info(response_split[0])
     return response_split[0]
 
+# TODO: Store this in an external doc
+# TODO: understand what Ariel is doing here with the management of where these answers exist
 
-def encode_decode_options(options):
-    target_phrase = [[tokenizer.decode(target_token_id, skip_special_tokens=True) for target_token_id in
-                      tokenizer.encode(option, add_special_tokens=False)] for option in options]
-    # target_phrase = [tokenizer.decode(target_id, skip_special_tokens=True) for target_id in target_ids]
-    first_target_phrase = [target[0] for target in target_phrase]
-    print(f"Options tokens: {target_phrase}")
-    print(f"first options tokens: {first_target_phrase}")
-    first_target_id_dict = {option: first_target_phrase[i] for i, option in enumerate(options)}
-    return first_target_id_dict
-
-
-def get_probability_dict(options, prompt, first_target_id_dict, temperature=params.params.temperature,
+@app.command()
+def get_probability_dict(options,
+                         prompt,
+                         first_target_id_dict,
                          epsilon=np.finfo(float).eps):
+    # What is this dictionary? Is he hoping to see the sentence or the kw in the first output?
     first_target_phrase = [first_target_id_dict[option] for option in options]
     response, outputs, token_outputs = api_hit(chat=prompt, options=options, first_target_phrase=first_target_phrase)
     probability_dict = {opt: -np.inf for opt in options}
@@ -233,7 +244,7 @@ def get_probability_dict(options, prompt, first_target_id_dict, temperature=para
         # print(options_log_probs, np.exp(options_log_probs))
         normed_probs = ut.normalize_probs(np.exp(options_log_probs))
         normed_log_probs = np.log(normed_probs)
-        print(normed_log_probs)
+        logger.info(normed_log_probs)
         # time.sleep(5)
     else:
         normed_log_probs = ut.normalize_logprobs(options_log_probs)
