@@ -79,6 +79,8 @@ def query(payload: str) -> ChatCompletionOutputLogprob | None:
 def api_hit(chat,
             options,
             first_target_phrase):
+    # first_target_phase can be dropped by just tokenizing options
+
     """Generate a response from the model."""
 
     overloaded = 1
@@ -107,6 +109,10 @@ def api_hit(chat,
             logger.warning(f"No logprobs found for {response}.")
             continue
 
+        # make sure at least one option is present in 0 position
+        # (prompt has been engineered to avoid "output probability leakage" to other positions)
+
+        # TODO: should probabilities be normalized to ensure binary? Or is that cheating?
         if len([i for i in range(len(token_outputs)) if
                 any(phrase == token_outputs[i][0] for phrase in first_target_phrase)]) != 0:
             overloaded = 0
@@ -124,6 +130,7 @@ def api_hit(chat,
 
 # Ok what the fresh hell is this
 def encode_decode_options(options):
+    # TODO: certainly there must an easier way than this
     target_phrase = [[tokenizer.decode(target_token_id, skip_special_tokens=True) for target_token_id in
                       tokenizer.encode(option, add_special_tokens=False)] for option in options]
     first_target_phrase = [target[0] for target in target_phrase]
@@ -187,6 +194,7 @@ def get_probability_dict(options,
                          first_target_id_dict,
                          epsilon=np.finfo(float).eps):
     # What is this dictionary? Is he hoping to see the sentence or the kw in the first output?
+    # He's just looking for the word, but word-as-tokenized token
     first_target_phrase = [first_target_id_dict[option] for option in options]
     response, outputs, token_outputs = api_hit(chat=prompt, options=options, first_target_phrase=first_target_phrase)
     probability_dict = {opt: -np.inf for opt in options}
