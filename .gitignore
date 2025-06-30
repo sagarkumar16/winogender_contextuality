@@ -140,9 +140,10 @@ celerybeat.pid
 *.sage.py
 
 # Environments
-/wcvenv/
-wcenv.bak
+/wcenv/
 wcenv/
+wcenv.bak
+.wcenv
 
 # Spyder project settings
 .spyderproject
@@ -180,4 +181,4 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
-
+/wcvenv/
