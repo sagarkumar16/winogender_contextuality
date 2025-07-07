@@ -10,7 +10,7 @@ Assessing contextuality in generative language models' resolution of gendered pr
 ### 1. Clone the Repository
 
 <pre> ```bash git clone https://github.com/yourusername/your-project-name.git
-cd your-project-name``` <\pre>
+cd your-project-name``` </pre>
 
 ### 2. Set Up the Environment
 
@@ -21,7 +21,7 @@ conda activate your-env-name```</pre>
 
 Or using pip:
 
-`pip install -r requirements.txt`
+<pre> ```pip install -r requirements.txt``` </pre>
 
 
 
