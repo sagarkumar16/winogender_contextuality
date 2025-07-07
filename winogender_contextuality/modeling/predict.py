@@ -128,6 +128,10 @@ def api_hit(chat,
 
     return [response, outputs, token_outputs]
 
+# TODO: write this
+def run_local():
+    return
+
 # Ok what the fresh hell is this
 def encode_decode_options(options):
     # TODO: certainly there must an easier way than this
@@ -195,10 +199,14 @@ def get_probability_dict(options,
                          epsilon=np.finfo(float).eps):
     # What is this dictionary? Is he hoping to see the sentence or the kw in the first output?
     # He's just looking for the word, but word-as-tokenized token
-    first_target_phrase = [first_target_id_dict[option] for option in options]
+    # Can be simplified by just getting the token for output desired
+    first_target_phrase = [tokenizer.convert_ids_to_tokens(tokenizer.encode(option, add_special_tokens=False))
+                           for option in options]
+
     response, outputs, token_outputs = api_hit(chat=prompt, options=options, first_target_phrase=first_target_phrase)
     probability_dict = {opt: -np.inf for opt in options}
 
+    # TODO: Determine if this is still necessary given the current prompts
     # find the token location where both options exist.
     ## find indices of these locations in each successive generation
     outputs = [response.logprobs.content[i].top_logprobs for i in range(len(response.logprobs.content))]
