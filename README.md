@@ -9,19 +9,27 @@ Assessing contextuality in generative language models' resolution of gendered pr
 ## Getting Started
 ### 1. Clone the Repository
 
-<pre> ```bash git clone https://github.com/yourusername/your-project-name.git
+<pre> bash git clone https://github.com/yourusername/your-project-name.git
 cd your-project-name``` </pre>
 
 ### 2. Set Up the Environment
 
 Using Conda:
 
-<pre> ```conda env create -f environment.yml
-conda activate your-env-name```</pre>
+
+```bash
+conda env create -f environment.yml
+```
+
+```bash
+conda activate your-env-name
+```
 
 Or using pip:
 
-<pre> ```pip install -r requirements.txt``` </pre>
+```bash
+pip install -r requirements.txt
+``` 
 
 
 
