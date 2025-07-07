@@ -6,6 +6,25 @@
 
 Assessing contextuality in generative language models' resolution of gendered pronouns.
 
+## Getting Started
+### 1. Clone the Repository
+
+'git clone https://github.com/yourusername/your-project-name.git'
+'cd your-project-name'
+
+### 2. Set Up the Environment
+
+Using Conda:
+
+'conda env create -f environment.yml'
+'conda activate your-env-name'
+
+Or using pip:
+
+'pip install -r requirements.txt'
+
+
+
 ## Project Organization
 
 ```
