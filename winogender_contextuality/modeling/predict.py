@@ -10,6 +10,7 @@ from huggingface_hub import InferenceClient, ChatCompletionOutputLogprob
 from transformers import AutoTokenizer
 import numpy as np
 import utils as ut
+import gc
 from winogender_contextuality.config import MODELS_DIR, PROCESSED_DATA_DIR
 from winogender_contextuality.modeling.prompting import *
 from winogender_contextuality.modeling.meta_prompting import *
@@ -128,10 +129,31 @@ def api_hit(chat,
 
     return [response, outputs, token_outputs]
 
-# TODO: write this
+# TODO: write these
 def run_local():
+    import sys
+    import torch
+    from torch import cuda, bfloat16
+    from transformers import AutoModelForCausalLM
+    from transformers import BitsAndBytesConfig
+    import transformers
+    import bitsandbytes
+    import accelerate
+    import huggingface_hub
+
+    # Check CUDA
+    logger.info(f'torch available: {torch.cuda.is_available()}', flush=True)
+    logger.info(torch.version.cuda)
+    for i in range(torch.cuda.device_count()):
+        logger.info(torch.cuda.get_device_properties(i))
+
+    # Connect with Huggingface
+    huggingface_hub.login(params.model.API_TOKEN)
+    logger.info('Start', flush=True)
+
     return
 
+# TODO: get rid of this
 # Ok what the fresh hell is this
 def encode_decode_options(options):
     # TODO: certainly there must an easier way than this
@@ -143,6 +165,7 @@ def encode_decode_options(options):
     first_target_id_dict = {option: first_target_phrase[i] for i, option in enumerate(options)}
     return first_target_id_dict
 
+# TODO: update to take in both API or local
 @app.command()
 def get_response(chat, options, first_target_phrase):
     response = api_hit(chat, options, first_target_phrase)[0]
