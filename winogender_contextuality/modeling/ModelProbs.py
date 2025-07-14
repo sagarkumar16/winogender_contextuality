@@ -1,5 +1,6 @@
 from transformers import AutoTokenizer
 import torch
+from loguru import logger
 from winogender_contextuality.modeling.run_local import load_model
 from winogender_contextuality.utils import flush
 
@@ -8,6 +9,7 @@ Base class for usage in contextuality measurement or metaprompting.
 
 - Sagar Kumar, 2025
 """
+
 
 class ModelProbs:
 
@@ -32,10 +34,12 @@ class ModelProbs:
 
 
     # TODO: if API, use pipeline
-    def load_model(self) -> None:
+    def load_model(self,
+                   gpu: str = 'cuda:0') -> None:
 
         """
         Loads a huggingface pretrained model locally, sets that as self.model, and caches it in the model_path directory
+        :param gpu: gpu index
         :return: None
         """
 
@@ -43,6 +47,7 @@ class ModelProbs:
             raise NotImplementedError
 
         elif self.mode == 'gpu':
+            self.gpu = gpu
             if self.model_path is None:
                 raise AttributeError("Must specify a model path for local runs")
             else:
@@ -52,23 +57,21 @@ class ModelProbs:
         else:
             raise AttributeError("Mode must be either 'api' or 'gpu'")
 
-    # TODO: prompting raw method
     def get_raw_logits(self,
                        prompt: str):
 
         """
-        Obtains raw logits for the entire vocabulary of the model
-        :param prompt:
-        :return:
+        Obtains raw logits (over the entire vocabulary) for the next token
+        :param prompt: formatted prompt string
+        :return: logits over the entire vocabulary for the next token
         """
-
-        inputs = (self.tokenizer.apply_chat_template(prompt, return_tensors="pt", continue_final_message=True)
-                  .to("cuda:0"))
 
         if self.mode:
             raise NotImplementedError
 
         else:
+            inputs = (self.tokenizer.apply_chat_template(prompt, return_tensors="pt", continue_final_message=True)
+                      .to("cuda:0"))
             with torch.no_grad():
                 outputs = self.model(inputs)
 
@@ -77,14 +80,58 @@ class ModelProbs:
 
         return next_token_logits
 
+    def get_token_ids(self,
+                      options: list[str]) -> list[list[int]]:
+        """
+        Outputs token IDs
+        :param options: list of tokens
+        :return: list of token id lists
+        """
+
+        assert all([s[0] == " " for s in options]), "Tokens must begin with a space. "
+
+        token_ids = [self.tokenizer.encode(opt, add_special_tokens=False) for opt in options]
+
+        for n, id in enumerate(token_ids):
+            if len(id) > 1:
+                logger.info(f"{options[n]} decomposes into two tokens.")
+
+        return token_ids
+
     # TODO: prompting generation method
-    #   this will have to do all the first_id nonsense to make sure we are looking at the correct probs
-    def get_completion(self):
+    #  - this will have to do all the first_id nonsense to make sure we are looking at the correct probs
+    def get_completion(self,
+                       prompt: str,
+                       **kwargs):
+
+        default_args = {
+            'max_new_tokens': 6,
+            'output_scores': True,
+            'return_dict_in_generate': True,
+            'output_hidden_states': True,
+            'do_sample': True,
+            'temperature': 0.5,
+            'pad_token_id': self.tokenizer.eos_token_id,
+            'top_k': 2
+        }
+
+        # If kwargs were provided, update the defaults
+        generation_args = {**default_args, **kwargs}
+
+        if self.mode:
+            raise NotImplementedError
+
+        else:
+            inputs = (self.tokenizer.apply_chat_template(prompt, return_tensors="pt", continue_final_message=True)
+                      .to(self.gpu))
+
+            outputs = self.model.generate(inputs, **generation_args)
+
         return
 
-    # TODO: masked softmax over selected tokens
-
-    # TODO: softmax over all vocabulary (& plot?)
+    # TODO: the above just gets the completion, this actually gets the logits tensor
+    def get_completed_logits(self):
+        return
 
     # TODO: metaprompting
     def run_metaprompt(self):
