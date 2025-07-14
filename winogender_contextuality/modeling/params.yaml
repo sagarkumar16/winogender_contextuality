@@ -1,5 +1,7 @@
 params:
+  max_new_tokens: 6
   temperature: 0.5
+  top_k: 2
   mode: 'api' #'gpu'
 model:
   model_name: "meta-llama/Llama-3.3-70B-Instruct"

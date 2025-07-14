@@ -5,6 +5,7 @@ from transformers import AutoModelForCausalLM, BitsAndBytesConfig, PreTrainedMod
 import huggingface_hub
 from loguru import logger
 import gc
+from winogender_contextuality.config import *
 
 
 # Check CUDA
@@ -38,14 +39,14 @@ def load_model(model_name: str,
         # full model
         logger.info('Loading full model', flush=True)
         model = AutoModelForCausalLM.from_pretrained(model_name, token=api_key, cache_dir=cache_dir)
-        model = model.to('cuda')
+        model = model.to(GPU_INDEX)
         model.config.use_cache = False
     else:
         # quantized version
         logger.info('Loading quantized model', flush=True)
         bnb_config = BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_quant_type='nf4',
                                                      bnb_4bit_use_double_quant=True, bnb_4bit_compute_dtype=bfloat16)
-        model = AutoModelForCausalLM.from_pretrained(model_name, device_map='cuda:0', quantization_config=bnb_config,
+        model = AutoModelForCausalLM.from_pretrained(model_name, device_map=GPU_INDEX, quantization_config=bnb_config,
                                                      cache_dir=cache_dir)
         model.config.use_cache = False
 

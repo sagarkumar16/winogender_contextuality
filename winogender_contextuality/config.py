@@ -30,6 +30,7 @@ FIGURES_DIR = REPORTS_DIR / "figures"
 
 # Model Specifications
 API_KEY = ''
+GPU_INDEX = 'gpu:0'
 
 # MODEL PARAMETERS
 with open("params.yaml", "r") as f:

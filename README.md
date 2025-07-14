@@ -31,6 +31,8 @@ Or using pip:
 pip install -r requirements.txt
 ``` 
 
+## Prompting
+Prompts should have an assistant role such that the first token generated is the BLANK which is being resolved. 
 
 
 ## Project Organization

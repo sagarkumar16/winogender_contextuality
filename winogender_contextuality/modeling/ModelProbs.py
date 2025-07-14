@@ -3,6 +3,7 @@ import torch
 from loguru import logger
 from winogender_contextuality.modeling.run_local import load_model
 from winogender_contextuality.utils import flush
+from winogender_contextuality.config import *
 
 """
 Base class for usage in contextuality measurement or metaprompting.
@@ -18,7 +19,7 @@ class ModelProbs:
                  model_name: str,
                  key: str,
                  model_path: str = None,
-                 quantized: bool = True,
+                 quantized: bool = True
                  ):
 
         self.mode = mode == 'api' # self.mode = True maps to API call instead of local
@@ -31,15 +32,14 @@ class ModelProbs:
         self.quantized = quantized
         self.model_path = model_path
         self.model = None
+        self.gpu = GPU_INDEX
 
 
     # TODO: if API, use pipeline
-    def load_model(self,
-                   gpu: str = 'cuda:0') -> None:
+    def load_model(self) -> None:
 
         """
         Loads a huggingface pretrained model locally, sets that as self.model, and caches it in the model_path directory
-        :param gpu: gpu index
         :return: None
         """
 
@@ -47,7 +47,6 @@ class ModelProbs:
             raise NotImplementedError
 
         elif self.mode == 'gpu':
-            self.gpu = gpu
             if self.model_path is None:
                 raise AttributeError("Must specify a model path for local runs")
             else:
@@ -104,18 +103,25 @@ class ModelProbs:
                        prompt: str,
                        **kwargs):
 
+        """
+        Get text generated output based on prompt. kwargs specify changes to default params in model.generate()
+        :param prompt: formatted prompt string
+        :param kwargs: model.generation() parameters
+        :return: generated output object
+        """
+
         default_args = {
-            'max_new_tokens': 6,
             'output_scores': True,
             'return_dict_in_generate': True,
             'output_hidden_states': True,
             'do_sample': True,
-            'temperature': 0.5,
             'pad_token_id': self.tokenizer.eos_token_id,
+            'max_new_tokens': 6,
+            'temperature': 0.5,
             'top_k': 2
         }
 
-        # If kwargs were provided, update the defaults
+        # If kwargs were provided, update the defaults -- this is where MODEL_PARAMS.params from config go
         generation_args = {**default_args, **kwargs}
 
         if self.mode:
@@ -127,11 +133,24 @@ class ModelProbs:
 
             outputs = self.model.generate(inputs, **generation_args)
 
-        return
+        return outputs
 
-    # TODO: the above just gets the completion, this actually gets the logits tensor
-    def get_completed_logits(self):
-        return
+    def get_completed_logits(self,
+                             prompt: str,
+                             **kwargs
+                             ):
+        """
+        Get logits over the entire vocabulary for the first token generated
+
+        :param prompt: formatted prompt string
+        :param kwargs: model.generation() parameters
+        :return: logit tensor for the next token
+        """
+
+        output = self.get_completion(prompt, **kwargs)
+        next_token_logits = output.scores[0]
+
+        return next_token_logits
 
     # TODO: metaprompting
     def run_metaprompt(self):
