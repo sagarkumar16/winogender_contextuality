@@ -1,7 +1,9 @@
 from pathlib import Path
-
 from dotenv import load_dotenv
 from loguru import logger
+import yaml
+from munch import munchify
+
 
 # Load environment variables from .env file if it exists
 load_dotenv()
@@ -25,6 +27,16 @@ MODELS_DIR = DATA_ROOT / "models"
 
 REPORTS_DIR = PROJ_ROOT / "reports"
 FIGURES_DIR = REPORTS_DIR / "figures"
+
+# Model Specifications
+API_KEY = ''
+GPU_INDEX = 'gpu:0'
+
+# MODEL PARAMETERS
+with open("params.yaml", "r") as f:
+    doc = yaml.safe_load(f)
+MODEL_PARAMS = munchify(doc)
+
 
 # If tqdm is installed, configure loguru with tqdm.write
 # https://github.com/Delgan/loguru/issues/135

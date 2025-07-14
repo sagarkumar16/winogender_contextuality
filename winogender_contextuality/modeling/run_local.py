@@ -1,0 +1,55 @@
+from pathlib import Path
+import torch
+from torch import bfloat16
+from transformers import AutoModelForCausalLM, BitsAndBytesConfig, PreTrainedModel
+import huggingface_hub
+from loguru import logger
+import gc
+from winogender_contextuality.config import *
+
+
+# Check CUDA
+logger.info(f'torch available: {torch.cuda.is_available()}', flush=True)
+logger.info(torch.version.cuda)
+for i in range(torch.cuda.device_count()):
+    logger.info(torch.cuda.get_device_properties(i))
+
+def load_model(model_name: str,
+               api_key: str,
+               quantized: bool,
+               model_path: str) -> PreTrainedModel:
+
+    """
+    Empties cache and loads a model locally then caches it in a folder called "cache" in the model_path directory
+    :param model_name: huggingface model name
+    :param api_key: huggingface api key
+    :param quantized: whether to quantize the model
+    :param model_path: directory where model is cached
+    :return: a huggingface model
+    """
+
+    cache_dir = Path(model_path+'/cache')
+    cache_dir.mkdir(parents=True, exist_ok=True)
+
+    # Connect with Huggingface
+    huggingface_hub.login(api_key)
+    logger.info('Connected with Huggingface', flush=True)
+
+    if not quantized:
+        # full model
+        logger.info('Loading full model', flush=True)
+        model = AutoModelForCausalLM.from_pretrained(model_name, token=api_key, cache_dir=cache_dir)
+        model = model.to(GPU_INDEX)
+        model.config.use_cache = False
+    else:
+        # quantized version
+        logger.info('Loading quantized model', flush=True)
+        bnb_config = BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_quant_type='nf4',
+                                                     bnb_4bit_use_double_quant=True, bnb_4bit_compute_dtype=bfloat16)
+        model = AutoModelForCausalLM.from_pretrained(model_name, device_map=GPU_INDEX, quantization_config=bnb_config,
+                                                     cache_dir=cache_dir)
+        model.config.use_cache = False
+
+    logger.info(f'Model cached in {cache_dir}', flush=True)
+
+    return model

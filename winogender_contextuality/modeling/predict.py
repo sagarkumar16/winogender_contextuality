@@ -25,7 +25,7 @@ Sagar Kumar, 2025
 """
 
 # TODO: Fill in type annotations
-# TODO: Finish replacing print with logger
+# TODO: turn these into classes
 
 app = typer.Typer()
 
@@ -214,7 +214,8 @@ def get_meta_response(chat):
 
 # TODO: Store this in an external doc
 # TODO: understand what Ariel is doing here with the management of where these answers exist
-
+# Doesn't make sense to use this in CLI as it is--needs to not have the prompt, dict and all as vars
+# this should be a method in a class that takes either the API or local model
 @app.command()
 def get_probability_dict(options,
                          prompt,

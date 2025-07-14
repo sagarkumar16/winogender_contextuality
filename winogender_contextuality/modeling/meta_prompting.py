@@ -7,6 +7,7 @@ from utils import get_random_prepared_player
 # %%
 
 # TODO: Adjust questions as necessary
+# TODO: this should take in the model from a ModelProbs class
 
 def get_question(q, i, options):
     if q == 'min':

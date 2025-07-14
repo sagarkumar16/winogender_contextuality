@@ -1,14 +1,11 @@
 params:
+  max_new_tokens: 6
   temperature: 0.5
-sim:
-  version: 'swap'
-  fill_blank: True
-  stochastic: True
+  top_k: 2
   mode: 'api' #'gpu'
 model:
   model_name: "meta-llama/Llama-3.3-70B-Instruct"
   shorthand: "llama33_70B"
-  API_TOKEN: ''
   sys_prompt_is_avail: True
   chat_template_is_avail: True
   quantized: True
