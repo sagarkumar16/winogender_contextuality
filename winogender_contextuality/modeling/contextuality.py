@@ -1,7 +1,7 @@
 from math import perm
 import numpy as np
 from typing import Callable
-from itertools import product
+from itertools import product, combinations
 from winogender_contextuality.config import *
 from winogender_contextuality.modeling.ModelProbs import ModelProbs
 from winogender_contextuality.utils import *
@@ -30,9 +30,9 @@ class MeasurementScenario:
 
         """
 
-        :param observations: Prompts
-        :param measurements: List of contexts (i.e. [['her', 'his'], ['his', 'her']])
-        :param outcomes: Possible outcomes either as output strings or boolean values
+        :param observations: Sentence pair (/list)
+        :param measurements: Pair (/list) of contexts (i.e. [['her', 'his'], ['his', 'her']])
+        :param outcomes: List of possible outcomes either as strings or boolean values
         """
 
         self.observations = observations
@@ -41,8 +41,10 @@ class MeasurementScenario:
 
         # Calculated Attributes
         self.incidence_matrix = None
-        self.measurement_map = {}
-        self.outcome_map = {}
+
+
+        self.cover = None # all possible prompts (with options filled in)
+        self.cover_idx = None # Dictionary mapping each prompt to an index
 
 
     def incidence_matrix(self):
@@ -55,6 +57,9 @@ class MeasurementScenario:
 
         arr = np.zeros(shape=(num_rows, num_columns))
 
+
+
+        # All of the below is wrong
         context_pairs = list(product(self.measurements, repeat=len(self.measurements)))
         outcome_pairs = list(product(self.outcomes, repeat=len(self.observations)))
 
@@ -67,10 +72,9 @@ class MeasurementScenario:
                 sections.append((idx, i, j))
                 idx += 1
 
-        for row_idx, measurement_idx, outcome_idx in sections:
-            for col_idx, global_assignments in enumerate(global_assignments):
+        #for row_idx, measurement_idx, outcome_idx in sections:
+        #    for col_idx, global_assignments in enumerate(global_assignments):
 
-                # TODO: Figure out how to finish this
 
 
 
