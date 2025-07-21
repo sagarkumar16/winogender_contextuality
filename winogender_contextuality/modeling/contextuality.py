@@ -1,7 +1,7 @@
 from math import perm
 import numpy as np
 import xarray as xr
-from scipy import linprog
+from scipy.optimize import linprog
 from typing import Callable
 from itertools import product, combinations
 from winogender_contextuality.config import *
@@ -102,21 +102,21 @@ def check_feasibility(measurement_scenario: MeasurementScenario) -> bool:
     m_prime = np.vstack([m.values, np.ones(m.shape[1])])
     v_prime = np.hstack([vals, np.ones(1)])
 
+    # dummy objective
+    c = np.zeros(m.shape[1])
 
+    res = np.linprog(c=c, A_eq=m_prime, b_eq=v_prime, bounds=[(0,1)]*m.shape[1])
 
-
-
-
-    # should return whether or not res.status = 2 (slightly more robust than just that it was unsuccessful)
-    return
+    # should return whether res.status = 2 (slightly more robust than just that it was unsuccessful)
+    if res.status == 2:
+        return False
+    else:
+        return res.status
 
 
 # TODO: This function simply takes in the matrix and outputs the contextuality
 def calculate_contextuality(measurement_scenario: MeasurementScenario) -> tuple[bool, float]:
-
-
-
-    return ()
+    return
 
 # TODO: Create function to calculate contextuality based on probabilities
 
