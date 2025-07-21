@@ -56,14 +56,16 @@ class MeasurementScenario:
 
         # All possible tuples of sentence-input pairs i.e. (a,b), (a',b), etc.
         self.context_pairs = list(product(*sentence_pairs))
+        self.context_pair_map = {i: pair for i, pair in enumerate(self.context_pairs)}
 
         # All possible outcomes tuples i.e. (0,0), (0,1), etc.
         self.outcome_pairs = list(product(self.outcomes, repeat=len(self.measurements)))
+        self.outcome_pair_map = {j: pair for j, pair in enumerate(self.outcome_pairs)}
 
         # Empty measurement scenario matrix
         self.scenario = xr.DataArray(np.zeros((len(self.context_pairs), len(self.outcome_pairs))),
                                      dims=['context_pair', 'outcome_pair'],
-                                     coords=[self.context_pairs, self.outcome_pairs])
+                                     coords=[self.context_pair_map.keys(), self.outcome_pair_map.keys()])
 
     def incidence_matrix(self):
 
@@ -74,19 +76,23 @@ class MeasurementScenario:
 
         # All possible global assignments e.g. (a, a', b, b') [order comes from product function in self.contexts]
         global_assignments = list(product([0, 1], repeat=len(self.observations)*len(self.measurements)))
+        global_assignments_map = {t: bstr for t,bstr in enumerate(global_assignments)}
 
         # All pairs of context pairs and outcome pairs
         context_outcome_pairs = product(self.context_pairs, self.outcome_pairs)
+        context_outcome_pairs_map = {p: pair for p, pair in enumerate(context_outcome_pairs)}
 
         arr = xr.DataArray(np.zeros(shape=(num_rows, num_columns)),
                            dims=['s', 't'],
-                           coords=[context_outcome_pairs, global_assignments]
+                           coords=[context_outcome_pairs_map.keys(), global_assignments_map.keys()]
                            )
 
         for p in arr.s:
-            context_pair, outcome_pair = p.item()
+            context_pair_idx, outcome_pair_idx = context_outcome_pairs_map[p.item()]
+            context_pair = self.context_pair_map[context_pair_idx]
+            outcome_pair = self.outcome_pair_map[outcome_pair_idx]
             for b in arr.t:
-                bool_str = b.item()
+                bool_str = global_assignments_map[b.item()]
                 bool_vals = []
                 for dim in range(len(self.measurements)):
                     bool_vals.append(bool_str[context_pair[dim]] == outcome_pair[dim])
