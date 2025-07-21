@@ -61,7 +61,7 @@ class MeasurementScenario:
         self.outcome_pairs = list(product(self.outcomes, repeat=len(self.measurements)))
 
         # Empty measurement scenario matrix
-        self.scenario = xr.DataArray(np.zeros(len(self.context_pairs), len(self.outcome_pairs)),
+        self.scenario = xr.DataArray(np.zeros((len(self.context_pairs), len(self.outcome_pairs))),
                                      dims=['context_pair', 'outcome_pair'],
                                      coords=[self.context_pairs, self.outcome_pairs])
 
