@@ -65,7 +65,7 @@ class MeasurementScenario:
         # Empty measurement scenario matrix
         self.scenario = xr.DataArray(np.zeros((len(self.context_pairs), len(self.outcome_pairs))),
                                      dims=['context_pair', 'outcome_pair'],
-                                     coords=[self.context_pair_map.keys(), self.outcome_pair_map.keys()])
+                                     coords=[list(self.context_pair_map.keys()), list(self.outcome_pair_map.keys())])
 
     def incidence_matrix(self):
 
@@ -84,7 +84,7 @@ class MeasurementScenario:
 
         arr = xr.DataArray(np.zeros(shape=(num_rows, num_columns)),
                            dims=['s', 't'],
-                           coords=[context_outcome_pairs_map.keys(), global_assignments_map.keys()]
+                           coords=[list(context_outcome_pairs_map.keys()), list(global_assignments_map.keys())]
                            )
 
         for p in arr.s:
