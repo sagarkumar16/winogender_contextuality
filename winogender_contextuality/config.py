@@ -33,7 +33,7 @@ API_KEY = ''
 GPU_INDEX = 'gpu:0'
 
 # MODEL PARAMETERS
-with open("params.yaml", "r") as f:
+with open("./modeling/params.yaml", "r") as f:
     doc = yaml.safe_load(f)
 MODEL_PARAMS = munchify(doc)
 
