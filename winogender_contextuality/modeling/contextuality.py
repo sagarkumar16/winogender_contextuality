@@ -41,8 +41,6 @@ class MeasurementScenario:
         self.measurements = measurements
         self.outcomes = outcomes
 
-        # Calculated Attributes
-        self.incidence_matrix = None
 
         ## all possible sentence-input prompt pairs
         self.contexts = list(product(self.observations, self.measurements))
@@ -53,6 +51,7 @@ class MeasurementScenario:
             pairs = []
             for measurement in self.measurements:
                 pairs.append(self.context_idx[(sentence, measurement)])
+            sentence_pairs.append(pairs)
 
         # All possible tuples of sentence-input pairs i.e. (a,b), (a',b), etc.
         self.context_pairs = list(product(*sentence_pairs))
@@ -88,9 +87,7 @@ class MeasurementScenario:
                            )
 
         for p in arr.s:
-            context_pair_idx, outcome_pair_idx = context_outcome_pairs_map[p.item()]
-            context_pair = self.context_pair_map[context_pair_idx]
-            outcome_pair = self.outcome_pair_map[outcome_pair_idx]
+            context_pair, outcome_pair = context_outcome_pairs_map[p.item()]
             for b in arr.t:
                 bool_str = global_assignments_map[b.item()]
                 bool_vals = []
@@ -111,7 +108,7 @@ def check_feasibility(measurement_scenario: MeasurementScenario) -> bool:
     # dummy objective
     c = np.zeros(m.shape[1])
 
-    res = np.linprog(c=c, A_eq=m_prime, b_eq=v_prime, bounds=[(0,1)]*m.shape[1])
+    res = linprog(c=c, A_eq=m_prime, b_eq=v_prime, bounds=[(0,1)]*m.shape[1])
 
     # should return whether res.status = 2 (slightly more robust than just that it was unsuccessful)
     if res.status == 2:
