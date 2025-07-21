@@ -1,6 +1,7 @@
 from math import perm
 import numpy as np
 import xarray as xr
+from scipy import linprog
 from typing import Callable
 from itertools import product, combinations
 from winogender_contextuality.config import *
@@ -93,10 +94,18 @@ class MeasurementScenario:
 
         return arr
 
-
-# TODO: strict contextuality
+# TODO: finish this code
 def check_feasibility(measurement_scenario: MeasurementScenario) -> bool:
-    mat = measurement_scenario.matrix
+    m = measurement_scenario.incidence_matrix()
+    vals = measurement_scenario.scenario.values.reshape(-1)
+
+    m_prime = np.vstack([m.values, np.ones(m.shape[1])])
+    v_prime = np.hstack([vals, np.ones(1)])
+
+
+
+
+
 
     # should return whether or not res.status = 2 (slightly more robust than just that it was unsuccessful)
     return
