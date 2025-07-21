@@ -1,5 +1,5 @@
 import pytest
+from winogender_contextuality.modeling.contextuality import *
 
-
-def test_code_is_tested():
-    assert False
+def test_incidence_matrix():
+    return False

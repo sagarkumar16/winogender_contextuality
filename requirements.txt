@@ -22,4 +22,4 @@ bitsandbytes
 requests
 pyyaml
 transformers
-
+xarray
