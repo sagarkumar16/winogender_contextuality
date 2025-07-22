@@ -108,7 +108,7 @@ def check_feasibility(measurement_scenario: MeasurementScenario) -> bool:
     # dummy objective
     c = np.zeros(m.shape[1])
 
-    res = linprog(c=c, A_eq=m_prime, b_eq=v_prime, bounds=[(0,1)]*m.shape[1])
+    res = linprog(c=c, A_eq=m_prime, b_eq=v_prime, bounds=[(0,1)]*m.shape[1], method='highs')
 
     # should return whether res.status = 2 (slightly more robust than just that it was unsuccessful)
     if res.status == 2:
