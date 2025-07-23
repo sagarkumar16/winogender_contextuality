@@ -29,8 +29,7 @@ FIGURES_DIR = REPORTS_DIR / "figures"
 
 PARAMS_PATH = PROJ_ROOT / "winogender_contextuality" / "modeling" / "params.yaml"
 
-# Model Specifications
-API_KEY = ''
+# GPU Specification
 GPU_INDEX = 'gpu:0'
 
 # MODEL PARAMETERS

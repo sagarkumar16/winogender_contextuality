@@ -14,6 +14,7 @@ cd your-project-name``` </pre>
 
 ### 2. Set Up the Environment
 
+#### Creating the Environment
 Using Conda:
 
 
@@ -30,6 +31,12 @@ Or using pip:
 ```bash
 pip install -r requirements.txt
 ``` 
+
+#### Environment Variables
+Set your Huggingface Key as an environment parameter using 
+```bash
+export HF_KEY="your-key-here"
+```
 
 ## Prompting
 Prompts should have an assistant role such that the first token generated is the BLANK which is being resolved. 

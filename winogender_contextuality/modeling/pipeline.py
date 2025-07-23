@@ -1,9 +1,13 @@
+import os
+
 import typer
 from winogender_contextuality.modeling.ModelProbs import *
 from winogender_contextuality.modeling.contextuality import *
 
 
 app = typer.Typer()
+
+HF_KEY = os.environ.get("HF_KEY")
 
 
 @app.command()
