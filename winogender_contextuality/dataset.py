@@ -40,7 +40,7 @@ def main(
             match = re.search(r'\$[a-zA-Z_]\w*', s)
             if match:
                 pronoun_type = match.group(0)
-                s.replace(pronoun_type, 'BLANK')
+                s = s.replace(pronoun_type, 'BLANK')
                 new_row[f"template_{idx+1}"] = s
                 new_row[f"differences_{idx+1}"] = pronouns_dict[pronoun_type]
             else:
