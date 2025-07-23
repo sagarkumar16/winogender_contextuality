@@ -52,6 +52,7 @@ class ModelProbs:
             else:
                 flush()
                 self.model = load_model(self.model_name, self.key, self.quantized, self.model_path)
+                logger.info(f"Loaded model {self.model_name} to {self.model_path}")
 
         else:
             raise AttributeError("Mode must be either 'api' or 'gpu'")
