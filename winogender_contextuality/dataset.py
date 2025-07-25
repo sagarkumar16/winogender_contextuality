@@ -34,7 +34,7 @@ def main(
         new_row = {}
 
         for idx in chunk.index:
-            s = df.sentence[idx]
+            s = chunk.sentence[idx]
             s = s.replace('$OCCUPATION', f"{df['occupation(0)'][idx]}")
             s = s.replace('$PARTICIPANT', f"{df['other-participant(1)'][idx]}")
             match = re.search(r'\$[a-zA-Z_]\w*', s)
