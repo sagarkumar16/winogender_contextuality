@@ -4,6 +4,7 @@ import pandas as pd
 import typer
 import ast
 from itertools import chain
+from datetime import datetime
 from winogender_contextuality.modeling.prompting import *
 from winogender_contextuality.modeling.ModelProbs import *
 from winogender_contextuality.modeling.contextuality import *
@@ -19,7 +20,8 @@ def get_contextuality(
         mode: str,
         model_name: str,
         game: bool,
-        input_path: pathlib.Path = PROCESSED_DATA_DIR / "wino_pairs.tsv"
+        input_path: pathlib.Path = PROCESSED_DATA_DIR / "wino_pairs.tsv",
+        output_path: pathlib.Path = PROCESSED_DATA_DIR / f"contextuality_{datetime.now()}.tsv"
 ) -> None:
 
     """
@@ -78,7 +80,7 @@ def get_contextuality(
 
     out_df = df
     out_df['Contextuality'] = contextuality_list
-    out_df.to_csv(PROCESSED_DATA_DIR / "contextuality.csv", index=False)
+    out_df.to_csv(output_path, index=False)
 
     return
 
