@@ -1,10 +1,7 @@
-from pathlib import Path
 import torch
 from torch import bfloat16
 from transformers import AutoModelForCausalLM, BitsAndBytesConfig, PreTrainedModel
 import huggingface_hub
-from loguru import logger
-import gc
 from winogender_contextuality.config import *
 
 

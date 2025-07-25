@@ -43,7 +43,7 @@ class ModelProbs:
         :return: None
         """
 
-        if self.mode:
+        if self.mode == 'api':
             raise NotImplementedError
 
         elif self.mode == 'gpu':
@@ -66,7 +66,7 @@ class ModelProbs:
         :return: logits over the entire vocabulary for the next token
         """
 
-        if self.mode:
+        if self.mode == 'api':
             raise NotImplementedError
 
         else:
@@ -125,7 +125,7 @@ class ModelProbs:
         # If kwargs were provided, update the defaults -- this is where MODEL_PARAMS.params from config go
         generation_args = {**default_args, **kwargs}
 
-        if self.mode:
+        if self.mode == 'api':
             raise NotImplementedError
 
         else:

@@ -14,7 +14,6 @@ scikit-learn
 tqdm
 typer
 -e .
-matplotlib
 munch
 huggingface-hub
 accelerate
@@ -23,3 +22,5 @@ requests
 pyyaml
 transformers
 xarray
+torch
+ipykernel
