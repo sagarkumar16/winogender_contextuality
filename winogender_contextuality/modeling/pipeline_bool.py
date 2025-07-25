@@ -100,7 +100,9 @@ def get_contextuality(
                 prob = softmax[token]
                 probs = np.array([1-prob, prob])
                 arr[pair_idx] = probs
-            ms.scenario[arr_idx] = compute_joint(arr).reshape(-1)
+            joint = compute_joint(arr)
+            renorm_joint = joint/np.sum(joint)
+            ms.scenario[arr_idx] = renorm_joint
 
         contextuality = check_feasibility(ms)
         if contextuality[1].status != 2:
