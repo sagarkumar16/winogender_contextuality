@@ -53,6 +53,12 @@ def main(
 
         new_rows.append(new_row)
 
+    # Adding a 61st test row
+    test_row = new_rows[-1].copy()
+    test_row['differences_1'] = ['she', 'orangutan']
+    test_row['differences_2'] = ['she', 'orangutan']
+    new_rows.append(test_row)
+
     output_df = pd.DataFrame(new_rows)
     output_df.to_csv(output_path, sep="\t", index=False)
     logger.success(f"Wrote processed dataset to {output_path}.")
