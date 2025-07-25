@@ -110,164 +110,84 @@ def check_feasibility(measurement_scenario: MeasurementScenario) -> tuple[bool, 
 
 
 # TODO: Create function to calculate contextual fraction based on probabilities
-def calculate_contextual_fraction(measurement_scenario: MeasurementScenario) -> float:
+# New from Claude
+def calculate_contextual_fraction_abramsky(measurement_scenario: MeasurementScenario) -> float:
     """
-    Calculates the contextual fraction of a measurement scenario.
+    Calculate contextual fraction using the method from Abramsky, Barbosa, and Mansfield (2017).
 
-    The contextual fraction is defined as the minimum weight of the contextual part
-    when decomposing the probability distribution as:
-    P = (1-w) * P_nc + w * P_c
+    This implements the linear programming approach described in their PRL paper.
+    The contextual fraction CF(e) = 1 - NCF(e), where NCF(e) is the noncontextual fraction
+    calculated by solving the LP in equation (3) of their paper.
 
-    where P_nc is non-contextual, P_c is contextual, and w is the contextual fraction.
-
-    Returns: Contextual fraction between 0 and 1, where 0 means fully non-contextual and 1 means fully contextual.
-    """
-
-    # Get the incidence matrix and scenario probabilities
-    m = measurement_scenario.incidence_matrix()
-    p_obs = measurement_scenario.scenario.values.reshape(-1)
-
-    # First check if the scenario is feasible (non-contextual)
-    is_feasible, _ = check_feasibility(measurement_scenario)
-
-    if is_feasible:
-        logger.info("Scenario is non-contextual (contextual fraction = 0)")
-        return 0.0
-
-    # If not feasible, calculate the contextual fraction
-    # We solve: minimize w such that (p_obs - w * p_c) is non-contextual
-    # This is equivalent to: minimize w such that M * lambda = p_obs - w * p_c
-    # where lambda >= 0, sum(lambda) = 1 - w
-
-    # Set up the optimization problem
-    # Variables: [lambda_1, ..., lambda_n, w] where n is number of columns in M
-    n_lambda = m.shape[1]
-    n_vars = n_lambda + 1  # lambda variables + w
-
-    # Objective: minimize w (last variable)
-    c = np.zeros(n_vars)
-    c[-1] = 1.0  # minimize w
-
-    # Constraints: M * lambda + w * p_obs = p_obs
-    # Rearranged: M * lambda - w * p_obs = 0
-    # But we want: M * lambda = p_obs - w * p_c
-    # For simplicity, we'll use p_c = p_obs (worst case contextual distribution)
-
-    # Equality constraints: M * lambda + w * p_obs = p_obs
-    A_eq = np.hstack([m.values, -p_obs.reshape(-1, 1)])
-    b_eq = np.zeros(len(p_obs))
-
-    # Additional constraint: sum(lambda) + w = 1 (normalization)
-    A_eq_norm = np.zeros((1, n_vars))
-    A_eq_norm[0, :n_lambda] = 1.0  # sum of lambdas
-    A_eq_norm[0, -1] = 1.0  # plus w
-    b_eq_norm = np.array([1.0])
-
-    # Combine equality constraints
-    A_eq_combined = np.vstack([A_eq, A_eq_norm])
-    b_eq_combined = np.hstack([b_eq, b_eq_norm])
-
-    # Bounds: lambda_i >= 0 for all i, 0 <= w <= 1
-    bounds = [(0, None)] * n_lambda + [(0, 1)]
-
-    # Solve the optimization problem
-    try:
-        res = linprog(c=c, A_eq=A_eq_combined, b_eq=b_eq_combined,
-                      bounds=bounds, method='highs')
-
-        if res.success:
-            contextual_fraction = res.x[-1]  # w is the last variable
-            logger.info(f"Contextual fraction calculated: {contextual_fraction:.4f}")
-            return float(contextual_fraction)
-        else:
-            logger.warning(f"Optimization failed: {res.message}")
-
-    except Exception as e:
-        logger.error(f"Error in contextual fraction calculation: {e}")
-
-
-def calculate_contextual_fraction_alternative(measurement_scenario: MeasurementScenario) -> float:
-    """
-    Alternative method to calculate contextual fraction using distance-based approach.
-
-    This method finds the closest non-contextual distribution and calculates
-    the fraction based on the L1 distance.
+    Returns:
+        float: Contextual fraction between 0 and 1, where 0 means non-contextual
+               and 1 means strongly contextual.
     """
 
-    m = measurement_scenario.incidence_matrix()
-    p_obs = measurement_scenario.scenario.values.reshape(-1)
+    # Get the incidence matrix M
+    M = measurement_scenario.incidence_matrix()
 
-    # Find the closest non-contextual distribution
-    # Minimize ||p_obs - p_nc||_1 subject to M * lambda = p_nc, lambda >= 0, sum(lambda) = 1
+    # Get the empirical model as a vector v_e
+    # This flattens the scenario probabilities into a vector
+    v_e = measurement_scenario.scenario.values.reshape(-1)
 
-    n_lambda = m.shape[1]
-    n_p = len(p_obs)
+    # Ensure probabilities are normalized (should sum to number of context pairs)
+    # Each context pair should have probabilities that sum to 1
+    n_context_pairs = len(measurement_scenario.context_pairs)
+    if np.abs(np.sum(v_e) - n_context_pairs) > 1e-10:
+        logger.warning(f"Probabilities don't sum to {n_context_pairs} (sum = {np.sum(v_e)})")
+        logger.warning("This may indicate an issue with the probability distribution")
 
-    # Variables: [lambda_1, ..., lambda_n, p_nc_1, ..., p_nc_m, t_1, ..., t_m]
-    # where t_i are auxiliary variables for L1 norm: |p_obs_i - p_nc_i| <= t_i
-    n_vars = n_lambda + n_p + n_p  # lambda + p_nc + t
+    # Set up the linear program from equation (3) in Abramsky et al.
+    # Find b ∈ R^n maximizing 1·b subject to M·b ≤ v_e and b ≥ 0
 
-    # Objective: minimize sum(t_i)
-    c = np.zeros(n_vars)
-    c[n_lambda + n_p:] = 1.0  # minimize sum of t variables
+    n_columns = M.shape[1]  # number of global assignments
 
-    # Constraint 1: M * lambda = p_nc
-    A_eq1 = np.zeros((n_p, n_vars))
-    A_eq1[:, :n_lambda] = m.values
-    A_eq1[:, n_lambda:n_lambda + n_p] = -np.eye(n_p)
-    b_eq1 = np.zeros(n_p)
+    # Objective: maximize 1·b (equivalently, minimize -1·b)
+    c = -np.ones(n_columns)
 
-    # Constraint 2: sum(lambda) = 1
-    A_eq2 = np.zeros((1, n_vars))
-    A_eq2[0, :n_lambda] = 1.0
-    b_eq2 = np.array([1.0])
+    # Inequality constraints: M·b ≤ v_e
+    A_ub = M.values
+    b_ub = v_e
 
-    # Combine equality constraints
-    A_eq = np.vstack([A_eq1, A_eq2])
-    b_eq = np.hstack([b_eq1, b_eq2])
-
-    # Inequality constraints for L1 norm: -t_i <= p_obs_i - p_nc_i <= t_i
-    # This gives us: p_nc_i - t_i <= p_obs_i and p_obs_i <= p_nc_i + t_i
-    A_ub = np.zeros((2 * n_p, n_vars))
-    b_ub = np.zeros(2 * n_p)
-
-    for i in range(n_p):
-        # p_nc_i - t_i <= p_obs_i  =>  p_nc_i - t_i - p_obs_i <= 0
-        A_ub[2 * i, n_lambda + i] = 1.0  # p_nc_i
-        A_ub[2 * i, n_lambda + n_p + i] = -1.0  # -t_i
-        b_ub[2 * i] = p_obs[i]
-
-        # p_obs_i <= p_nc_i + t_i  =>  -p_nc_i - t_i + p_obs_i <= 0
-        A_ub[2 * i + 1, n_lambda + i] = -1.0  # -p_nc_i
-        A_ub[2 * i + 1, n_lambda + n_p + i] = -1.0  # -t_i
-        b_ub[2 * i + 1] = -p_obs[i]
-
-    # Bounds: lambda_i >= 0, p_nc_i >= 0, t_i >= 0
-    bounds = [(0, None)] * n_vars
+    # Bounds: b ≥ 0 (each component of b is non-negative)
+    bounds = [(0, None)] * n_columns
 
     try:
-        res = linprog(c=c, A_eq=A_eq, b_eq=b_eq, A_ub=A_ub, b_ub=b_ub,
-                      bounds=bounds, method='highs')
+        # Solve the linear program
+        res = linprog(c=c, A_ub=A_ub, b_ub=b_ub, bounds=bounds, method='highs')
 
         if res.success:
-            # Extract the closest non-contextual distribution
-            p_nc = res.x[n_lambda:n_lambda + n_p]
+            # The noncontextual fraction is 1·b* where b* is the optimal solution
+            noncontextual_fraction = -res.fun  # negative because we minimized -1·b
 
-            # Calculate L1 distance
-            l1_distance = np.sum(np.abs(p_obs - p_nc))
+            # Contextual fraction = 1 - noncontextual fraction
+            contextual_fraction = 1.0 - noncontextual_fraction
 
-            # Contextual fraction is the L1 distance (normalized)
-            # Since probabilities sum to 1, the maximum L1 distance is 2
-            contextual_fraction = l1_distance / 2.0
+            # Ensure the result is in [0, 1] due to numerical precision
+            contextual_fraction = max(0.0, min(1.0, contextual_fraction))
 
-            logger.info(f"Alternative contextual fraction: {contextual_fraction:.4f}")
+            logger.info(f"Noncontextual fraction: {noncontextual_fraction:.6f}")
+            logger.info(f"Contextual fraction: {contextual_fraction:.6f}")
+
+            # Additional diagnostic information
+            if contextual_fraction < 1e-10:
+                logger.info("Model is non-contextual (within numerical precision)")
+            elif abs(contextual_fraction - 1.0) < 1e-10:
+                logger.info("Model is strongly contextual")
+            else:
+                logger.info(f"Model has partial contextuality: {contextual_fraction:.4f}")
+
             return float(contextual_fraction)
+
         else:
-            logger.error(f"Alternative optimization failed: {res.message}")
-            return 1.0  # Assume fully contextual if calculation fails
+            logger.error(f"Linear programming failed: {res.message}")
+            logger.error("This may indicate an infeasible problem or numerical issues")
+
+            # If LP fails, try to determine if it's due to infeasibility
+            # An infeasible problem might indicate issues with the setup
+            return np.nan
 
     except Exception as e:
-        logger.error(f"Error in alternative contextual fraction calculation: {e}")
-        return 1.0
-
-
+        logger.error(f"Error in linear programming: {e}")
+        return np.nan
