@@ -73,6 +73,7 @@ def get_contextuality(
     mp.load_model()
 
     contextuality_list = []
+    fraction_list = []
     for row_idx in tqdm(df.index):
         ms = MeasurementScenario(
             observations=['template_1', 'template_2'],
@@ -102,18 +103,21 @@ def get_contextuality(
                 arr[pair_idx] = probs
             joint = compute_joint(arr)
             renorm_joint = joint/np.sum(joint)
-            ms.scenario[arr_idx] = renorm_joint
+            ms.scenario[arr_idx] = renorm_joint.reshape(-1)
 
         contextuality = check_feasibility(ms)
         if contextuality[1].status != 2:
             logger.warning(f"Context {row_idx} status {contextuality[1].status}.")
-
         contextuality_list.append(contextuality[0])
+
+        cf = calculate_contextual_fraction_abramsky(ms)
+        fraction_list.append(cf)
 
     logger.success(f"Completed all contextuality calculations.")
 
     out_df = df
     out_df['Contextuality'] = [not b for b in contextuality_list]
+    out_df['CF'] = fraction_list
 
     model_fname = model_name.split("/")[-1]
     output_path = PROCESSED_DATA_DIR / f"boolean_contextuality_{model_fname}_game-{game}_{datetime.now()}.tsv"
