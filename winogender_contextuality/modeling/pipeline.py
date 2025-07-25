@@ -19,8 +19,10 @@ HF_KEY = os.environ.get("HF_KEY")
 def get_contextuality(
         mode: str,
         model_name: str,
+        generation: bool,
         game: bool,
-        input_path: pathlib.Path = PROCESSED_DATA_DIR / "wino_pairs.tsv"
+        input_path: pathlib.Path = PROCESSED_DATA_DIR / "wino_pairs.tsv",
+        **kwargs
 ) -> None:
 
     """
@@ -28,8 +30,10 @@ def get_contextuality(
 
     :param mode: 'gpu' or 'api'
     :param model_name: name of huggingface model for download
+    :param generation: whether to use generation mode
     :param game: Game prompt or not
     :param input_path: path to input TSV
+    :param kwargs: additional arguments for generation
     :return: None
     """
 
@@ -60,7 +64,10 @@ def get_contextuality(
                 sent = df[obs][row_idx]  # the 0 is iterated index
                 pnouns = reverse_pronouns(df[f"differences_{obs_index}"][row_idx], ctx)
                 prompt = get_role_content_prompt(game=game, options=pnouns, sentence=sent)
-                logits = mp.get_raw_logits(prompt=prompt).to('cpu')
+                if generation:
+                    logits = get_completed_logits(prompt, **kwargs)
+                else:
+                    logits = mp.get_raw_logits(prompt=prompt).to('cpu')
                 # For now, we just use the two tokens
                 tokens = mp.get_token_ids(options=[" " + s for s in ast.literal_eval(
                     df[f"differences_{obs_index}"][row_idx])])  # in order [m, f]
@@ -80,7 +87,7 @@ def get_contextuality(
     out_df = df
     out_df['Contextuality'] = [not b for b in contextuality_list]
 
-    output_path = PROCESSED_DATA_DIR / f"contextuality_{model_name}_{datetime.now()}.tsv"
+    output_path = PROCESSED_DATA_DIR / f"contextuality_{model_name}_game-{game}_{datetime.now()}.tsv"
     out_df.to_csv(output_path, index=False)
 
     return
