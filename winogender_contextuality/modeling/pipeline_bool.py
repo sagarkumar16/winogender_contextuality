@@ -16,6 +16,31 @@ from winogender_contextuality.utils import *
 app = typer.Typer()
 HF_KEY = os.environ.get("HF_KEY")
 
+def compute_joint(matrix: np.ndarray) -> np.ndarray:
+    """
+    Compute the full joint probability distribution matrix for multiple observations.
+
+    :param matrix: shape (n_observations, n_outcomes), row-stochastic.
+
+    :returns joint_array: N-dimensional tensor of joint probabilities with shape
+    (n_outcomes, n_outcomes, ..., n_outcomes) [n_trials times].
+    """
+    n_observations, n_outcomes = matrix.shape
+
+    # Generate all possible outcome combinations for n trials
+    all_combinations = product(range(n_outcomes), repeat=n_observations)
+
+    # Compute joint probabilities for each combination
+    joint_probs = [
+        np.prod([matrix[obs_idx, outcome_idx] for obs_idx, outcome_idx in enumerate(combo)])
+        for combo in all_combinations
+    ]
+
+    # Reshape into an N-D tensor
+    joint_array = np.array(joint_probs).reshape([n_outcomes] * n_observations)
+
+    return joint_array
+
 @app.command()
 def get_contextuality(
         mode: str,
@@ -75,7 +100,7 @@ def get_contextuality(
                 prob = softmax[token]
                 probs = np.array([1-prob, prob])
                 arr[pair_idx] = probs
-            ms.scenario[arr_idx] = arr.reshape(-1)  # does this work
+            ms.scenario[arr_idx] = compute_joint(arr).reshape(-1)
 
         contextuality = check_feasibility(ms)
         if contextuality[1].status != 2:

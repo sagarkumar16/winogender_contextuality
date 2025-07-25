@@ -3,7 +3,7 @@ import pathlib
 import pandas as pd
 import typer
 import ast
-from itertools import chain
+from itertools import chain, product
 from datetime import datetime
 from winogender_contextuality.modeling.prompting import *
 from winogender_contextuality.modeling.ModelProbs import *
@@ -14,6 +14,32 @@ from winogender_contextuality.utils import *
 
 app = typer.Typer()
 HF_KEY = os.environ.get("HF_KEY")
+
+
+def compute_joint(matrix: np.ndarray) -> np.ndarray:
+    """
+    Compute the full joint probability distribution matrix for multiple observations.
+
+    :param matrix: shape (n_observations, n_outcomes), row-stochastic.
+
+    :returns joint_array: N-dimensional tensor of joint probabilities with shape
+    (n_outcomes, n_outcomes, ..., n_outcomes) [n_trials times].
+    """
+    n_observations, n_outcomes = matrix.shape
+
+    # Generate all possible outcome combinations for n trials
+    all_combinations = product(range(n_outcomes), repeat=n_observations)
+
+    # Compute joint probabilities for each combination
+    joint_probs = [
+        np.prod([matrix[obs_idx, outcome_idx] for obs_idx, outcome_idx in enumerate(combo)])
+        for combo in all_combinations
+    ]
+
+    # Reshape into an N-D tensor
+    joint_array = np.array(joint_probs).reshape([n_outcomes] * n_observations)
+
+    return joint_array
 
 @app.command()
 def get_contextuality(
@@ -71,9 +97,9 @@ def get_contextuality(
                 tokens = mp.get_token_ids(options=[" " + s for s in ast.literal_eval(
                     df[f"differences_{obs_index}"][row_idx])])  # in order [m, f]
                 softmax = masked_softmax(list(chain.from_iterable(tokens)), logits)
-                probs = softmax / torch.sum(softmax)
+                probs = softmax / torch.sum(softmax) # issue here
                 arr[pair_idx] = probs.detach().numpy()
-            ms.scenario[arr_idx] = arr.reshape(-1)  # does this work
+            ms.scenario[arr_idx] = compute_joint(arr).reshape(-1)
 
         contextuality = check_feasibility(ms)
         if contextuality[1].status != 2:
