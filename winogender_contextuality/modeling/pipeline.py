@@ -1,77 +1,86 @@
 import os
-
+import pathlib
+import pandas as pd
 import typer
+import ast
+from itertools import chain
 from winogender_contextuality.modeling.prompting import *
 from winogender_contextuality.modeling.ModelProbs import *
 from winogender_contextuality.modeling.contextuality import *
 from winogender_contextuality.config import *
+from winogender_contextuality.utils import *
 
 
 app = typer.Typer()
-
 HF_KEY = os.environ.get("HF_KEY")
 
-# TODO: is this the right option? Or should it be a class of its own?
-def create_prompt_pair():
-    return
-
-# TODO: Run single iteration -- how do we want to break this up, tho?
 @app.command()
 def get_contextuality(
-        prompt: str,
-        options: list[str],
         mode: str,
         model_name: str,
-        observations: list[str],
-        measurements: list[list[str]],
-        outcomes: list[str] | list[bool], # This will become redundant
-        input_path: str = PROCESSED_DATA_DIR / "wino_pairs.tsv", # path to the tsv
-        generation: bool = False, # this is a new var that decides which one to run
-        key: str = HF_KEY,
-        model_path: str = None,
-        quantized: bool = True,
-        game: bool = False, # whether it is the game prompt
-        rewards: list = [],
-        mem_str: str = "",
-        **kwargs
-):
+        game: bool,
+        input_path: pathlib.Path = PROCESSED_DATA_DIR / "wino_pairs.tsv"
+) -> None:
 
-    # TODO: WRONG -- this has to take in the prompt pairs
+    """
+    Calculates contextuality for a pair of sentences, formatted like wino_pairs.tsv.
 
-    model_probs = ModelProbs(mode, model_name, key, model_path, quantized)
-
-    # Load model
-    model_probs.load_model()
+    :param mode: 'gpu' or 'api'
+    :param model_name: name of huggingface model for download
+    :param game: Game prompt or not
+    :param input_path: path to input TSV
+    :return: None
+    """
 
 
+    df = pd.read_csv(input_path, sep="\t")
+    mp = ModelProbs(
+        mode=mode,
+        model_name=model_name,
+        key=HF_KEY,
+        model_path=MODELS_DIR)
 
-    # Get logits
-    if generation:
-        logits = model_probs.get_completed_logits(prompt, **kwargs)
-    else:
-        logits = model_probs.get_raw_logits(prompt)
+    mp.load_model()
 
-    # Softmax over the logits
+    contextuality_list = []
+    for row_idx in tqdm(df.index):
+        ms = MeasurementScenario(
+            observations=['template_1', 'template_2'],
+            measurements=['he_first', 'she_first'],
+            outcomes=[0,1]
+        )
 
+        for arr_idx, pair in enumerate(ms.context_pairs):
+            arr = np.zeros((len(ms.observations), len(ms.outcomes)))
+            for pair_idx, oc_idx in enumerate(pair):
+                oc_pair = ms.reverse_context_idx.get(oc_idx)
+                obs, ctx = oc_pair
+                obs_index = obs[-1]
+                sent = df[obs][row_idx]  # the 0 is iterated index
+                pnouns = reverse_pronouns(df[f"differences_{obs_index}"][row_idx], ctx)
+                prompt = get_role_content_prompt(game=game, options=pnouns, sentence=sent)
+                logits = mp.get_raw_logits(prompt=prompt).to('cpu')
+                # For now, we just use the two tokens
+                tokens = mp.get_token_ids(options=[" " + s for s in ast.literal_eval(
+                    df[f"differences_{obs_index}"][row_idx])])  # in order [m, f]
+                softmax = masked_softmax(list(chain.from_iterable(tokens)), logits)
+                probs = softmax / torch.sum(softmax)
+                arr[pair_idx] = probs.detach().numpy()
+            ms.scenario[arr_idx] = arr.reshape(-1)  # does this work
 
-    # Get token ids -- how do we make sure we're getting all the possible ones?
+        contextuality = check_feasibility(ms)
+        if contextuality[1].status != 2:
+            logger.warning(f"Context {row_idx} status {contextuality[1].status}.")
 
+        contextuality_list.append(contextuality[0])
 
-@app.command()
-def main(
-    # ---- REPLACE DEFAULT PATHS AS APPROPRIATE ----
-    features_path: Path = PROCESSED_DATA_DIR / "test_features.csv",
-    model_path: Path = MODELS_DIR / "model.pkl",
-    predictions_path: Path = PROCESSED_DATA_DIR / "test_predictions.csv",
-    # -----------------------------------------
-):
-    # ---- REPLACE THIS WITH YOUR OWN CODE ----
-    logger.info("Performing inference for model...")
-    for i in tqdm(range(10), total=10):
-        if i == 5:
-            logger.info("Something happened for iteration 5.")
-    logger.success("Inference complete.")
-    # -----------------------------------------
+    logger.success(f"Completed all contextuality calculations.")
+
+    out_df = df
+    out_df['Contextuality'] = contextuality_list
+    out_df.to_csv(PROCESSED_DATA_DIR / "contextuality.csv", index=False)
+
+    return
 
 
 if __name__ == "__main__":

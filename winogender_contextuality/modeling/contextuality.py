@@ -18,8 +18,8 @@ class MeasurementScenario:
 
     def __init__(self,
                  observations: list[str],
-                 measurements: list[list[str]],
-                 outcomes: list[str] | list[bool]):
+                 measurements: list[str],
+                 outcomes: list[str] | list[bool] | list[int]):
 
         """
 
