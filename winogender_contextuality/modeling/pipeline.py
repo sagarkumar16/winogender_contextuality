@@ -79,7 +79,7 @@ def get_contextuality(
     logger.success(f"Completed all contextuality calculations.")
 
     out_df = df
-    out_df['Contextuality'] = contextuality_list
+    out_df['Contextuality'] = [not b for b in contextuality_list]
     out_df.to_csv(output_path, index=False)
 
     return
