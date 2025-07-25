@@ -55,8 +55,8 @@ def main(
 
     # Adding a 61st test row
     test_row = new_rows[-1].copy()
-    test_row['differences_1'] = ['she', 'orangutan']
-    test_row['differences_2'] = ['she', 'orangutan']
+    test_row['differences_1'] = ['she', 'potato']
+    test_row['differences_2'] = ['she', 'potato']
     new_rows.append(test_row)
 
     output_df = pd.DataFrame(new_rows)
