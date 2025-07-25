@@ -96,7 +96,7 @@ def get_contextuality(
                 if generation:
                     logits = mp.get_completed_logits(prompt,
                                                      temperature=temperature,
-                                                     max_new_tokens=max_tokens).to('cpu')
+                                                     max_new_tokens=max_tokens)[0].to('cpu')
                 else:
                     logits = mp.get_raw_logits(prompt=prompt).to('cpu')
                 # For now, we just use the two tokens
@@ -125,7 +125,8 @@ def get_contextuality(
     out_df['CF'] = fraction_list
 
     model_fname = model_name.split("/")[-1]
-    output_path = PROCESSED_DATA_DIR / f"boolean_contextuality_{model_fname}_game-{game}_{datetime.now()}.tsv"
+    output_path = PROCESSED_DATA_DIR / (f"boolean_contextuality_{model_fname}_gen-{generation}_"
+                                        f"game-{game}_{datetime.now()}.tsv")
     out_df.to_csv(output_path, index=False)
     return
 
