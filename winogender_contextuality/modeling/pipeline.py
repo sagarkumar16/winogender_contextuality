@@ -87,9 +87,9 @@ def get_contextuality(
     out_df = df
     out_df['Contextuality'] = [not b for b in contextuality_list]
 
-    output_path = PROCESSED_DATA_DIR / f"contextuality_{model_name}_game-{game}_{datetime.now()}.tsv"
+    model_fname = model_name.split("/")[-1]
+    output_path = PROCESSED_DATA_DIR / f"contextuality_{model_fname}_game-{game}_{datetime.now()}.tsv"
     out_df.to_csv(output_path, index=False)
-
     return
 
 
