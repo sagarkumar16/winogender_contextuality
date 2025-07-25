@@ -5,6 +5,7 @@ import typer
 import ast
 from itertools import chain
 from datetime import datetime
+import torch.nn.functional as F
 from winogender_contextuality.modeling.prompting import *
 from winogender_contextuality.modeling.ModelProbs import *
 from winogender_contextuality.modeling.contextuality import *
@@ -68,11 +69,12 @@ def get_contextuality(
                 else:
                     logits = mp.get_raw_logits(prompt=prompt).to('cpu')
                 # For now, we just use the two tokens
-                tokens = mp.get_token_ids(options=[" " + s for s in ast.literal_eval(
-                    df[f"differences_{obs_index}"][row_idx])])  # in order [m, f]
-                softmax = masked_softmax(list(chain.from_iterable(tokens)), logits)
-                probs = softmax / torch.sum(softmax)
-                arr[pair_idx] = probs.detach().numpy()
+                token = mp.get_token_ids(options=[" " + s for s in ast.literal_eval(
+                    df[f"differences_{obs_index}"][row_idx])])[1][0]  # in order [m, f]
+                softmax = F.softmax(logits)
+                prob = softmax[token]
+                probs = np.array([1-prob, prob])
+                arr[pair_idx] = probs
             ms.scenario[arr_idx] = arr.reshape(-1)  # does this work
 
         contextuality = check_feasibility(ms)
@@ -87,7 +89,7 @@ def get_contextuality(
     out_df['Contextuality'] = [not b for b in contextuality_list]
 
     model_fname = model_name.split("/")[-1]
-    output_path = PROCESSED_DATA_DIR / f"contextuality_{model_fname}_game-{game}_{datetime.now()}.tsv"
+    output_path = PROCESSED_DATA_DIR / f"boolean_contextuality_{model_fname}_game-{game}_{datetime.now()}.tsv"
     out_df.to_csv(output_path, index=False)
     return
 
