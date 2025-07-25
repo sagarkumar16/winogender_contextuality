@@ -21,8 +21,7 @@ def get_contextuality(
         model_name: str,
         generation: bool,
         game: bool,
-        input_path: pathlib.Path = PROCESSED_DATA_DIR / "wino_pairs.tsv",
-        **kwargs
+        input_path: pathlib.Path = PROCESSED_DATA_DIR / "wino_pairs.tsv"
 ) -> None:
 
     """
@@ -33,7 +32,7 @@ def get_contextuality(
     :param generation: whether to use generation mode
     :param game: Game prompt or not
     :param input_path: path to input TSV
-    :param kwargs: additional arguments for generation
+    :param kwargs: additional arguments for generation -- NOT CURRENTLY IMPLEMENTED BC TYPER
     :return: None
     """
 
