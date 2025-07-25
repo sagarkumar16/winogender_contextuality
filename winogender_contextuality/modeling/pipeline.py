@@ -47,7 +47,9 @@ def get_contextuality(
         model_name: str,
         generation: bool,
         game: bool,
-        input_path: pathlib.Path = PROCESSED_DATA_DIR / "wino_pairs.tsv"
+        input_path: pathlib.Path = PROCESSED_DATA_DIR / "wino_pairs.tsv",
+        temperature: float = 0.5,
+        max_tokens: int = 6
 ) -> None:
 
     """
@@ -58,7 +60,8 @@ def get_contextuality(
     :param generation: whether to use generation mode
     :param game: Game prompt or not
     :param input_path: path to input TSV
-    :param kwargs: additional arguments for generation -- NOT CURRENTLY IMPLEMENTED BC TYPER
+    :param temperature: generation temperature
+    :param max_tokens: maximum number of tokens generated
     :return: None
     """
 
@@ -91,7 +94,9 @@ def get_contextuality(
                 pnouns = reverse_pronouns(df[f"differences_{obs_index}"][row_idx], ctx)
                 prompt = get_role_content_prompt(game=game, options=pnouns, sentence=sent)
                 if generation:
-                    raise NotImplementedError
+                    logits = mp.get_completed_logits(prompt,
+                                                     temperature=temperature,
+                                                     max_new_tokens=max_tokens).to('cpu')
                 else:
                     logits = mp.get_raw_logits(prompt=prompt).to('cpu')
                 # For now, we just use the two tokens
