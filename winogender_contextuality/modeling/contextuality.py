@@ -186,3 +186,88 @@ def calculate_contextual_fraction(measurement_scenario: MeasurementScenario) -> 
         logger.error(f"Error in contextual fraction calculation: {e}")
 
 
+def calculate_contextual_fraction_alternative(measurement_scenario: MeasurementScenario) -> float:
+    """
+    Alternative method to calculate contextual fraction using distance-based approach.
+
+    This method finds the closest non-contextual distribution and calculates
+    the fraction based on the L1 distance.
+    """
+
+    m = measurement_scenario.incidence_matrix()
+    p_obs = measurement_scenario.scenario.values.reshape(-1)
+
+    # Find the closest non-contextual distribution
+    # Minimize ||p_obs - p_nc||_1 subject to M * lambda = p_nc, lambda >= 0, sum(lambda) = 1
+
+    n_lambda = m.shape[1]
+    n_p = len(p_obs)
+
+    # Variables: [lambda_1, ..., lambda_n, p_nc_1, ..., p_nc_m, t_1, ..., t_m]
+    # where t_i are auxiliary variables for L1 norm: |p_obs_i - p_nc_i| <= t_i
+    n_vars = n_lambda + n_p + n_p  # lambda + p_nc + t
+
+    # Objective: minimize sum(t_i)
+    c = np.zeros(n_vars)
+    c[n_lambda + n_p:] = 1.0  # minimize sum of t variables
+
+    # Constraint 1: M * lambda = p_nc
+    A_eq1 = np.zeros((n_p, n_vars))
+    A_eq1[:, :n_lambda] = m.values
+    A_eq1[:, n_lambda:n_lambda + n_p] = -np.eye(n_p)
+    b_eq1 = np.zeros(n_p)
+
+    # Constraint 2: sum(lambda) = 1
+    A_eq2 = np.zeros((1, n_vars))
+    A_eq2[0, :n_lambda] = 1.0
+    b_eq2 = np.array([1.0])
+
+    # Combine equality constraints
+    A_eq = np.vstack([A_eq1, A_eq2])
+    b_eq = np.hstack([b_eq1, b_eq2])
+
+    # Inequality constraints for L1 norm: -t_i <= p_obs_i - p_nc_i <= t_i
+    # This gives us: p_nc_i - t_i <= p_obs_i and p_obs_i <= p_nc_i + t_i
+    A_ub = np.zeros((2 * n_p, n_vars))
+    b_ub = np.zeros(2 * n_p)
+
+    for i in range(n_p):
+        # p_nc_i - t_i <= p_obs_i  =>  p_nc_i - t_i - p_obs_i <= 0
+        A_ub[2 * i, n_lambda + i] = 1.0  # p_nc_i
+        A_ub[2 * i, n_lambda + n_p + i] = -1.0  # -t_i
+        b_ub[2 * i] = p_obs[i]
+
+        # p_obs_i <= p_nc_i + t_i  =>  -p_nc_i - t_i + p_obs_i <= 0
+        A_ub[2 * i + 1, n_lambda + i] = -1.0  # -p_nc_i
+        A_ub[2 * i + 1, n_lambda + n_p + i] = -1.0  # -t_i
+        b_ub[2 * i + 1] = -p_obs[i]
+
+    # Bounds: lambda_i >= 0, p_nc_i >= 0, t_i >= 0
+    bounds = [(0, None)] * n_vars
+
+    try:
+        res = linprog(c=c, A_eq=A_eq, b_eq=b_eq, A_ub=A_ub, b_ub=b_ub,
+                      bounds=bounds, method='highs')
+
+        if res.success:
+            # Extract the closest non-contextual distribution
+            p_nc = res.x[n_lambda:n_lambda + n_p]
+
+            # Calculate L1 distance
+            l1_distance = np.sum(np.abs(p_obs - p_nc))
+
+            # Contextual fraction is the L1 distance (normalized)
+            # Since probabilities sum to 1, the maximum L1 distance is 2
+            contextual_fraction = l1_distance / 2.0
+
+            logger.info(f"Alternative contextual fraction: {contextual_fraction:.4f}")
+            return float(contextual_fraction)
+        else:
+            logger.error(f"Alternative optimization failed: {res.message}")
+            return 1.0  # Assume fully contextual if calculation fails
+
+    except Exception as e:
+        logger.error(f"Error in alternative contextual fraction calculation: {e}")
+        return 1.0
+
+
