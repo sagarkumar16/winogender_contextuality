@@ -22,7 +22,7 @@ class ModelProbs:
                  quantized: bool = True
                  ):
 
-        self.mode = mode == 'api' # self.mode = True maps to API call instead of local
+        self.mode = mode # self.mode = True maps to API call instead of local
         self.model_name = model_name
         self.key = key
         self.tokenizer = AutoTokenizer.from_pretrained(model_name, token=key)

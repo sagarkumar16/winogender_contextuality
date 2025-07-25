@@ -25,7 +25,7 @@ def load_model(model_name: str,
     :return: a huggingface model
     """
 
-    cache_dir = Path(model_path+'/cache')
+    cache_dir = Path(model_path / 'cache')
     cache_dir.mkdir(parents=True, exist_ok=True)
 
     # Connect with Huggingface

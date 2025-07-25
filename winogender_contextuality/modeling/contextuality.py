@@ -36,6 +36,7 @@ class MeasurementScenario:
         ## all possible sentence-input prompt pairs
         self.contexts = list(product(self.observations, self.measurements))
         self.context_idx = {pair: n for n, pair in enumerate(self.contexts)}
+        self.reverse_context_idx = {n: pair for n, pair in enumerate(self.contexts)}
 
         sentence_pairs = []
         for sentence in self.observations:

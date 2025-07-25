@@ -30,7 +30,7 @@ FIGURES_DIR = REPORTS_DIR / "figures"
 PARAMS_PATH = PROJ_ROOT / "winogender_contextuality" / "modeling" / "params.yaml"
 
 # GPU Specification
-GPU_INDEX = 'gpu:0'
+GPU_INDEX = 'cuda:0'
 
 # MODEL PARAMETERS
 with open(PARAMS_PATH, "r") as f:

@@ -2,6 +2,7 @@ import gc
 import torch
 import typer
 import torch.nn.functional as F
+import ast
 
 app = typer.Typer()
 
@@ -26,3 +27,23 @@ def masked_softmax(token_ids: list[int],
     probs = F.softmax(z, dim=0)
 
     return probs
+
+def reverse_pronouns(options: str, 
+                     measurement: str,
+                     prime: str = "she_first") -> list[str]:
+
+    """
+    Takes in a pronoun ist string from the processed TSV file and returns the pronouns as a list in the correct order.
+    
+    :param options: list stored as a string (e.g. "["he", "she"]")
+    :param measurement: measurement context (e.g. "he_first")
+    :param prime: which measurement context needs to be reversed
+    """
+
+    pronouns = ast.literal_eval(options)
+    if measurement==prime:
+        return pronouns[::-1]
+    else:
+        return pronouns
+
+    
