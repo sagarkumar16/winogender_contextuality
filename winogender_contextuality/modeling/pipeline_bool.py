@@ -71,7 +71,7 @@ def get_contextuality(
                 # For now, we just use the two tokens
                 token = mp.get_token_ids(options=[" " + s for s in ast.literal_eval(
                     df[f"differences_{obs_index}"][row_idx])])[1][0]  # in order [m, f]
-                softmax = F.softmax(logits)
+                softmax = F.softmax(logits, dim=0)
                 prob = softmax[token]
                 probs = np.array([1-prob, prob])
                 arr[pair_idx] = probs

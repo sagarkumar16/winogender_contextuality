@@ -111,5 +111,78 @@ def check_feasibility(measurement_scenario: MeasurementScenario) -> tuple[bool, 
 
 # TODO: Create function to calculate contextual fraction based on probabilities
 def calculate_contextual_fraction(measurement_scenario: MeasurementScenario) -> float:
-    return
+    """
+    Calculates the contextual fraction of a measurement scenario.
+
+    The contextual fraction is defined as the minimum weight of the contextual part
+    when decomposing the probability distribution as:
+    P = (1-w) * P_nc + w * P_c
+
+    where P_nc is non-contextual, P_c is contextual, and w is the contextual fraction.
+
+    Returns: Contextual fraction between 0 and 1, where 0 means fully non-contextual and 1 means fully contextual.
+    """
+
+    # Get the incidence matrix and scenario probabilities
+    m = measurement_scenario.incidence_matrix()
+    p_obs = measurement_scenario.scenario.values.reshape(-1)
+
+    # First check if the scenario is feasible (non-contextual)
+    is_feasible, _ = check_feasibility(measurement_scenario)
+
+    if is_feasible:
+        logger.info("Scenario is non-contextual (contextual fraction = 0)")
+        return 0.0
+
+    # If not feasible, calculate the contextual fraction
+    # We solve: minimize w such that (p_obs - w * p_c) is non-contextual
+    # This is equivalent to: minimize w such that M * lambda = p_obs - w * p_c
+    # where lambda >= 0, sum(lambda) = 1 - w
+
+    # Set up the optimization problem
+    # Variables: [lambda_1, ..., lambda_n, w] where n is number of columns in M
+    n_lambda = m.shape[1]
+    n_vars = n_lambda + 1  # lambda variables + w
+
+    # Objective: minimize w (last variable)
+    c = np.zeros(n_vars)
+    c[-1] = 1.0  # minimize w
+
+    # Constraints: M * lambda + w * p_obs = p_obs
+    # Rearranged: M * lambda - w * p_obs = 0
+    # But we want: M * lambda = p_obs - w * p_c
+    # For simplicity, we'll use p_c = p_obs (worst case contextual distribution)
+
+    # Equality constraints: M * lambda + w * p_obs = p_obs
+    A_eq = np.hstack([m.values, -p_obs.reshape(-1, 1)])
+    b_eq = np.zeros(len(p_obs))
+
+    # Additional constraint: sum(lambda) + w = 1 (normalization)
+    A_eq_norm = np.zeros((1, n_vars))
+    A_eq_norm[0, :n_lambda] = 1.0  # sum of lambdas
+    A_eq_norm[0, -1] = 1.0  # plus w
+    b_eq_norm = np.array([1.0])
+
+    # Combine equality constraints
+    A_eq_combined = np.vstack([A_eq, A_eq_norm])
+    b_eq_combined = np.hstack([b_eq, b_eq_norm])
+
+    # Bounds: lambda_i >= 0 for all i, 0 <= w <= 1
+    bounds = [(0, None)] * n_lambda + [(0, 1)]
+
+    # Solve the optimization problem
+    try:
+        res = linprog(c=c, A_eq=A_eq_combined, b_eq=b_eq_combined,
+                      bounds=bounds, method='highs')
+
+        if res.success:
+            contextual_fraction = res.x[-1]  # w is the last variable
+            logger.info(f"Contextual fraction calculated: {contextual_fraction:.4f}")
+            return float(contextual_fraction)
+        else:
+            logger.warning(f"Optimization failed: {res.message}")
+
+    except Exception as e:
+        logger.error(f"Error in contextual fraction calculation: {e}")
+
 
