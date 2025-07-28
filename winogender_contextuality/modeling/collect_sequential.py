@@ -57,7 +57,7 @@ def simulate(
         mode=mode,
         model_name=model_name,
         key=HF_KEY,
-        model_path=MODELS_DIR
+        model_path=MODELS_DIR)
 
     output_fpath = output_dir / f"measurements_{model_name.split('/')[-1]}_{temperature}.ndjson"
 
