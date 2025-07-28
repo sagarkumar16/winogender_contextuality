@@ -63,7 +63,7 @@ def simulate(
 
     output_fpath = output_dir / f"measurements_{model_name.split('/')[-1]}_{temperature}.ndjson"
 
-    pbar = tqdm(df.index, desc="Simulating")
+    pbar = tqdm(df.index[:10], desc="Simulating")
 
     for idx in pbar:
         measurements_idx = []
@@ -75,41 +75,43 @@ def simulate(
 
         error_count = 0
 
-        #for _ in range(n_runs):
-        for s_perm in permutations(sentences.keys()):
-
-            s1 = sentences[s_perm[0]]
-            s2 = sentences[s_perm[1]]
-            p1 = pronouns[s_perm[0]]
-            p2 = pronouns[s_perm[1]]
-
-            for i, p1_perm in enumerate(permutations(p1)):
-                for j, p2_perm in enumerate(permutations(p2)):
-
-                    s_list = [s1, s2]
-                    p_list = [p1_perm, p2_perm]
-
-                    prompt = role_content_base(*no_game_seq_prompt(p_list, s_list))
-
-                    input, output = mp.get_completion(prompt=prompt, temperature=temperature)
-
-                    input_len = input.shape[1]
-
-                    try:
-                        json_output = ast.literal_eval(
-                            mp.tokenizer.decode(output.sequences[0][input_len - 5:], skip_special_tokens=True)
-                        )
-
-                        c = Context(sent_order=s_perm,
-                                    pnoun_order=(i,j),
-                                    sentence_1=s1,
-                                    sentence_2=s2,
-                                    pronouns_1=p1,
-                                    pronouns_2=p2)
-
-                        measurements_idx.append(Measurement(context=c, measurement=json_output))
-                    except Exception as e:
-                        error_count += 1
+        for _ in range(n_runs):
+            for s_perm in permutations(sentences.keys()):
+    
+                s1 = sentences[s_perm[0]]
+                s2 = sentences[s_perm[1]]
+                p1 = pronouns[s_perm[0]]
+                p2 = pronouns[s_perm[1]]
+    
+                for i, p1_perm in enumerate(permutations(p1)):
+                    for j, p2_perm in enumerate(permutations(p2)):
+    
+                        s_list = [s1, s2]
+                        p_list = [p1_perm, p2_perm]
+    
+                        prompt = role_content_base(*no_game_seq_prompt(p_list, s_list))
+                        print(prompt)
+    
+                        inputs, output = mp.get_completion(prompt=prompt, temperature=temperature, max_new_tokens=12)
+    
+                        input_len = inputs.shape[1]
+    
+                        decoded_output = mp.tokenizer.decode(output.sequences[0][input_len - 5:], skip_special_tokens=True)
+    
+                        try:
+                            json_output = ast.literal_eval(decoded_output)
+    
+                            c = Context(sent_order=s_perm,
+                                        pnoun_order=(i,j),
+                                        sentence_1=s1,
+                                        sentence_2=s2,
+                                        pronouns_1=p1,
+                                        pronouns_2=p2)
+    
+                            measurements_idx.append(Measurement(context=c, measurement=json_output))
+                        except Exception as e:
+                            error_count += 1
+                            logger.warning(f"Malformed output: {decoded_output}")
 
         logger.warning(f"{error_count}/{n_runs} not captured.")
         logger.info(f"Successfully collected {idx}. "

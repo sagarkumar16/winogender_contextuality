@@ -36,14 +36,14 @@ def no_game_seq_prompt(option_sets: list[list[str]],
     """
 
     sent1, sent2 = sentences
-    sent1.replace('BLANK', 'BLANK1')
-    sent2.replace('BLANK', 'BLANK2')
+    sent1 = sent1.replace('BLANK', 'BLANK1')
+    sent2 = sent2.replace('BLANK', 'BLANK2')
 
-    SYSTEM_PROMPT = ("Below you will find a passage in *bold* which contains precisely one instances of "
+    SYSTEM_PROMPT = ("Below you will find a passage in *bold* which contains precisely one instance of "
                      "the term BLANK1, and one instance of the term BLANK2. "
                      "Your task is to replace BLANK1 and BLANK2 with one of the options provided for each. "
                      "The tasks are designed to be unambiguous, so please provide only one token for each blank and "
-                     "do not reorder the data. Do not repeat the sentence.")
+                     "do not reorder the data. Do not repeat the sentence
 
     USER_PROMPT = (f"Given this passage: *{sent1} {sent2}*\n" 
                    f"Replace BLANK1 with one of the options: {option_sets[0]}. " 
