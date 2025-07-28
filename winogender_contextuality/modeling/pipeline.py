@@ -15,7 +15,7 @@ from winogender_contextuality.utils import *
 app = typer.Typer()
 HF_KEY = os.environ.get("HF_KEY")
 
-
+# TODO: This is broken--it automatically renders the contextuality computation trivial
 def compute_joint(matrix: np.ndarray) -> np.ndarray:
     """
     Compute the full joint probability distribution matrix for multiple observations.
@@ -83,6 +83,8 @@ def get_contextuality(
             measurements=['he_first', 'she_first'],
             outcomes=[0,1]
         )
+
+        ms.get_scenario_matrix()
 
         for arr_idx, pair in enumerate(ms.context_pairs):
             arr = np.zeros((len(ms.observations), len(ms.outcomes)))

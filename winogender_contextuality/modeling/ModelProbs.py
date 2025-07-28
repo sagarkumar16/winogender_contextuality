@@ -71,7 +71,7 @@ class ModelProbs:
 
         else:
             inputs = (self.tokenizer.apply_chat_template(prompt, return_tensors="pt", continue_final_message=True)
-                      .to("cuda:0"))
+                      .to(self.gpu))
             with torch.no_grad():
                 outputs = self.model(inputs)
 
@@ -134,7 +134,7 @@ class ModelProbs:
 
             outputs = self.model.generate(inputs, **generation_args)
 
-        return outputs
+        return inputs, outputs
 
     def get_completed_logits(self,
                              prompt: str,
@@ -148,10 +148,43 @@ class ModelProbs:
         :return: logit tensor for the next token
         """
 
-        output = self.get_completion(prompt, **kwargs)
+        _, output = self.get_completion(prompt, **kwargs)
         next_token_logits = output.scores[0]
 
         return next_token_logits
+
+    def find_pronouns(self,
+                      pronouns: list,
+                      generated_sequence: torch.Tensor,
+                      scores: tuple[torch.Tensor] | None = None,
+                      logits: bool = True
+                      ) -> torch.Tensor | tuple[torch.Tensor]:
+
+
+        """
+        Find positions (and logits) for pronouns in generated text.
+
+        :param pronouns: list of pronouns searching for
+        :param generated_sequence: only the tokens generated
+        :param scores: output scores for generated tokens, only needed if logits = True
+        :param logits: whether to return logits tensors
+        """
+
+        trial_strings = pronouns + [' ' + p for p in pronouns]
+        token_tensor = self.tokenizer(trial_strings + pronouns)
+        possible_tokens = torch.tensor([t[1] for t in token_tensor.input_ids]).to('cuda:0')
+        mask = (generated_sequence[..., None] == possible_tokens).any(-1)
+        indices = torch.nonzero(mask, as_tuple=False)
+
+        if logits:
+            if scores is None:
+                raise TypeError("Output scores required to output logits.")
+            else:
+                output_logits = scores[indices.item()]
+                return indices, output_logits
+
+        else:
+            return indices
 
     # TODO: metaprompting
     def run_metaprompt(self):

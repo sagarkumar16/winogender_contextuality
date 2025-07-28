@@ -23,6 +23,38 @@ def no_game_prompt(options: list,
 
     return SYSTEM_PROMPT, USER_PROMPT, ASSISTANT_PROMPT
 
+# TODO: Write the simultaneous measurement prompt
+def no_game_seq_prompt(option_sets: list[list[str]],
+                       sentences: list[str]):
+
+    """
+    Outputs a zero-shot user prompt which needs to be fit into a template.
+
+    :param option_sets: A LIST of pronoun options. MUST be ordered to measure contextuality.
+    :param sentences: Ordered list of two sentences, each with a BLANK
+    :return: user prompt
+    """
+
+    sent1, sent2 = sentences
+    sent1.replace('BLANK', 'BLANK1')
+    sent2.replace('BLANK', 'BLANK2')
+
+    SYSTEM_PROMPT = ("Below you will find a passage in *bold* which contains precisely one instances of "
+                     "the term BLANK1, and one instance of the term BLANK2. "
+                     "Your task is to replace BLANK1 and BLANK2 with one of the options provided for each. "
+                     "The tasks are designed to be unambiguous, so please provide only one token for each blank and "
+                     "do not reorder the data. Do not repeat the sentence.")
+
+    USER_PROMPT = (f"Given this passage: *{sent1} {sent2}*\n" 
+                   f"Replace BLANK1 with one of the options: {option_sets[0]}. " 
+                   f"Replace BLANK2 with one of the options: {option_sets[1]}. "
+                   "Respond only in the following format {'BLANK1': '<text>', 'BLANK2': '<text>'}"
+                   )
+
+    ASSISTANT_PROMPT = "{'BLANK1':"
+
+    return SYSTEM_PROMPT, USER_PROMPT, ASSISTANT_PROMPT
+
 # TODO: Does this need an assistant prompt?
 def game_prompt(options: list,
                 sentence: str,
@@ -86,6 +118,26 @@ def get_role_content_prompt(game: bool,
         {
             "role": "assistant",
             "content": ASSISTANT_PROMPT
+        }
+    ]
+
+    return message
+
+def role_content_base(system: str,
+                      user: str,
+                      assistant:str):
+    message = [
+        {
+            "role": "system",
+            "content": system
+        },
+        {
+            "role": "user",
+            "content": user
+        },
+        {
+            "role": "assistant",
+            "content": assistant
         }
     ]
 

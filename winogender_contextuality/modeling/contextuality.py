@@ -32,6 +32,14 @@ class MeasurementScenario:
         self.measurements = measurements
         self.outcomes = outcomes
 
+        self.scenario = None
+        self.bunches = None
+
+    def get_bunch_matrices(self):
+        return None
+
+    def get_scenario_matrix(self) -> None:
+
 
         ## all possible sentence-input prompt pairs
         self.contexts = list(product(self.observations, self.measurements))
@@ -57,6 +65,8 @@ class MeasurementScenario:
         self.scenario = xr.DataArray(np.zeros((len(self.context_pairs), len(self.outcome_pairs))),
                                      dims=['context_pair', 'outcome_pair'],
                                      coords=[list(self.context_pair_map.keys()), list(self.outcome_pair_map.keys())])
+
+        return
 
     def incidence_matrix(self):
 
@@ -191,3 +201,25 @@ def calculate_contextual_fraction_abramsky(measurement_scenario: MeasurementScen
     except Exception as e:
         logger.error(f"Error in linear programming: {e}")
         return np.nan
+
+
+class CyclicCbDModel:
+
+    """
+    Class with data structures and methods for calculating contextuality in n-cyclic systems using the
+    Contextuality-by-Default framework.
+
+    Based on data structures employed in this paper: http://dx.doi.org/10.1098/rsta.2015.0099
+
+    Currently only implemented for dimension 2.
+
+    """
+
+    def __init__(self,
+                 observations: list,
+                 contexts: list,
+                 ):
+        return
+
+
+
