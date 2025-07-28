@@ -84,6 +84,8 @@ def get_contextuality(
             outcomes=[0,1]
         )
 
+        ms.get_scenario_matrix()
+
         for arr_idx, pair in enumerate(ms.context_pairs):
             arr = np.zeros((len(ms.observations), len(ms.outcomes)))
             for pair_idx, oc_idx in enumerate(pair):
@@ -129,6 +131,7 @@ def get_contextuality(
                                         f"game-{game}_{datetime.now()}.tsv")
     out_df.to_csv(output_path, index=False)
     return
+
 
 
 if __name__ == "__main__":
