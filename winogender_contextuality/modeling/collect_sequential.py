@@ -59,6 +59,8 @@ def simulate(
         key=HF_KEY,
         model_path=MODELS_DIR)
 
+    mp.load_model()
+
     output_fpath = output_dir / f"measurements_{model_name.split('/')[-1]}_{temperature}.ndjson"
 
     pbar = tqdm(df.index, desc="Simulating")
