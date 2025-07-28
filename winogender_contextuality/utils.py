@@ -45,5 +45,4 @@ def reverse_pronouns(options: str,
         return pronouns[::-1]
     else:
         return pronouns
-
     

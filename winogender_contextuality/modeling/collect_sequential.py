@@ -27,6 +27,7 @@ class Context:
 class Measurement:
     context: Context
     measurement: dict[str, str]
+    probabilities: float | None
 
 HF_KEY = os.environ.get("HF_KEY")
 
@@ -54,6 +55,8 @@ def simulate(
     """
 
     logger.add(LOG_DIR / f"data_collection_{datetime.now()}.log")
+    output_fpath = output_dir / f"measurements_{model_name.split('/')[-1]}_{temperature}.ndjson"
+    logits = []
     
     df = pd.read_csv(input_fpath, sep="\t")
     mp = ModelProbs(
@@ -63,8 +66,6 @@ def simulate(
         model_path=MODELS_DIR)
 
     mp.load_model()
-
-    output_fpath = output_dir / f"measurements_{model_name.split('/')[-1]}_{temperature}.ndjson"
 
     pbar = tqdm(df.index, desc="Simulating")
 
@@ -113,9 +114,29 @@ def simulate(
                                         sentence_2=s2,
                                         pronouns_1=p1,
                                         pronouns_2=p2)
-    
-                            measurements_idx.append(Measurement(context=c, measurement=json_output))
-                                                         
+
+
+                            if logits_flag:
+                                first_token, first_logits, second_token, second_logits = mp.pronoun_logits(
+                                    pronouns_list=p_list,
+                                    generated_sequence = output.sequences[0][input_len:],
+                                    scores = output.scores
+                                )
+                                logger.info(f"Fetched logits for {first_token} and {second_token} positions.")
+                                first_fem_pnoun_token = mp.tokenizer(p1[1])[1]
+                                second_fem_pnoun_token = mp.tokenizer(p2[1])[1]
+
+                                first_fem_prob = masked_softmax(first_fem_pnoun_token, first_logits)
+                                second_fem_prob = masked_softmax(second_fem_pnoun_token, second_logits)
+
+                                probs = (first_fem_prob, second_fem_prob)
+
+                            else:
+                                probs = None
+
+
+                            measurements_idx.append(Measurement(context=c, measurement=json_output, probabilities=probs)) 
+                                
                                 
                         except Exception as e:
                             error_count += 1

@@ -186,6 +186,24 @@ class ModelProbs:
         else:
             return indices
 
+    def pronoun_logits(self,
+                       pronouns_list: list[list[str]],
+                       generated_sequence: torch.Tensor,
+                       scores: tuple[torch.Tensor] | None = None
+                      ) -> torch.Tensor | tuple[torch.Tensor]:
+        
+        token_log_dict = {g.cpu().item(): arr for g, arr in zip(generated_sequence, scores)}
+        idx = list(token_log_dict.keys()).index(sep_token)
+    
+        first_idx, first_logits = find_pronouns(pronouns_list[0], generated_sequence[:idx], scores[:idx], logits=True)
+        second_idx, second_logits = find_pronouns(pronouns_list[1], generated_sequence[idx+1:], 
+                                      scores[idx+1:], logits=True)
+    
+        first_token = self.tokenizer.convert_ids_to_tokens([generated_sequence[:idx][first_idx.item()]])
+        second_token = self.tokenizer.convert_ids_to_tokens([generated_sequence[idx+1:][second_idx.item()]])
+    
+        return (first_token, first_logits, second_token, second_logits)
+
     # TODO: metaprompting
     def run_metaprompt(self):
         return
