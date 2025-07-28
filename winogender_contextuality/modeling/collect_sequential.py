@@ -131,6 +131,8 @@ def simulate(
 
                                 probs = (first_fem_prob, second_fem_prob)
 
+                                logits_flag = False
+
                             else:
                                 probs = None
 
