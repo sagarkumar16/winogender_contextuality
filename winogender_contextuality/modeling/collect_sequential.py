@@ -111,10 +111,9 @@ def simulate(
                     except Exception as e:
                         error_count += 1
 
-                    logger.warning(f"{error_count}/{n_runs} not captured.")
-                    logger.info(f"Successfully collected {idx}. "
-                                f"Writing {len(measurements_idx)} measurements to {output_fpath}.")
-
+        logger.warning(f"{error_count}/{n_runs} not captured.")
+        logger.info(f"Successfully collected {idx}. "
+                    f"Writing {len(measurements_idx)} measurements to {output_fpath}.")
 
         with open(output_fpath, "a") as f:
             f.write(json.dumps([asdict(m) for m in measurements_idx]) + "\n")
