@@ -92,7 +92,9 @@ def simulate(
                     input, output = mp.get_completion(prompt=prompt, temperature=temperature)
 
                     input_len = input.shape[1]
-                    json_output = ast.literal_eval(output.sequences[0][input_len - 5:])
+                    json_output = ast.literal_eval(
+                        mp.tokenizer.decode(output.sequences[0][input_len - 5:], skip_special_tokens=True)
+                    )
 
                     c = Context(sent_order=s_perm,
                                 pnoun_order=(i,j),
