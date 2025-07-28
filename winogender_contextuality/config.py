@@ -29,6 +29,8 @@ FIGURES_DIR = REPORTS_DIR / "figures"
 
 PARAMS_PATH = PROJ_ROOT / "winogender_contextuality" / "modeling" / "params.yaml"
 
+LOG_DIR = PROJ_ROOT / "logs"
+
 # GPU Specification
 GPU_INDEX = 'cuda:0'
 

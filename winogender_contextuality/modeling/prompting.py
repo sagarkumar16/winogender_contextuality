@@ -43,7 +43,7 @@ def no_game_seq_prompt(option_sets: list[list[str]],
                      "the term BLANK1, and one instance of the term BLANK2. "
                      "Your task is to replace BLANK1 and BLANK2 with one of the options provided for each. "
                      "The tasks are designed to be unambiguous, so please provide only one token for each blank and "
-                    "do not reorder the data. Do not repeat the sentence.")
+                     "do not reorder the data. Do not repeat the sentence.")
 
     USER_PROMPT = (f"Given this passage: *{sent1} {sent2}*\n" 
                    f"Replace BLANK1 with one of the options: {option_sets[0]}. " 
@@ -93,36 +93,6 @@ def game_prompt(options: list,
 
     return SYSTEM_PROMPT, USER_PROMPT, ASSISTANT_PROMPT
 
-def get_role_content_prompt(game: bool,
-                            options: list,
-                            sentence: str,
-                            rewards: list = [],
-                            mem_str: str = ""):
-
-    if game:
-        assert rewards, "Game prompt requires rewards"
-        SYSTEM_PROMPT, USER_PROMPT, ASSISTANT_PROMPT = game_prompt(options=options, sentence=sentence,
-                                                                   rewards=rewards, mem_str=mem_str)
-    else:
-        SYSTEM_PROMPT, USER_PROMPT, ASSISTANT_PROMPT = no_game_prompt(options=options, sentence=sentence)
-
-    message = [
-        {
-            "role": "system",
-            "content": SYSTEM_PROMPT
-        },
-        {
-            "role": "user",
-            "content": USER_PROMPT
-        },
-        {
-            "role": "assistant",
-            "content": ASSISTANT_PROMPT
-        }
-    ]
-
-    return message
-
 def role_content_base(system: str,
                       user: str,
                       assistant:str):
@@ -140,5 +110,22 @@ def role_content_base(system: str,
             "content": assistant
         }
     ]
+
+    return message
+
+def get_role_content_prompt(game: bool,
+                            options: list,
+                            sentence: str,
+                            rewards: list = [],
+                            mem_str: str = ""):
+
+    if game:
+        assert rewards, "Game prompt requires rewards"
+        SYSTEM_PROMPT, USER_PROMPT, ASSISTANT_PROMPT = game_prompt(options=options, sentence=sentence,
+                                                                   rewards=rewards, mem_str=mem_str)
+    else:
+        SYSTEM_PROMPT, USER_PROMPT, ASSISTANT_PROMPT = no_game_prompt(options=options, sentence=sentence)
+
+    role_content_base(SYSTEM_PROMPT, USER_PROMPT, ASSISTANT_PROMPT)
 
     return message

@@ -4,6 +4,7 @@ import pathlib
 import pandas as pd
 import ast
 import typer
+from datetime import datetime
 from dataclasses import dataclass, asdict
 from itertools import permutations
 from winogender_contextuality.modeling.prompting import *
@@ -52,6 +53,8 @@ def simulate(
     :return:
     """
 
+    logger.add(LOG_DIR / f"data_collection_{datetime.now()}.log")
+    
     df = pd.read_csv(input_fpath, sep="\t")
     mp = ModelProbs(
         mode=mode,
@@ -63,7 +66,7 @@ def simulate(
 
     output_fpath = output_dir / f"measurements_{model_name.split('/')[-1]}_{temperature}.ndjson"
 
-    pbar = tqdm(df.index[:10], desc="Simulating")
+    pbar = tqdm(df.index, desc="Simulating")
 
     for idx in pbar:
         measurements_idx = []
@@ -75,19 +78,23 @@ def simulate(
 
         error_count = 0
 
-        for _ in range(n_runs):
-            for s_perm in permutations(sentences.keys()):
-    
-                s1 = sentences[s_perm[0]]
-                s2 = sentences[s_perm[1]]
-                p1 = pronouns[s_perm[0]]
-                p2 = pronouns[s_perm[1]]
-    
-                for i, p1_perm in enumerate(permutations(p1)):
-                    for j, p2_perm in enumerate(permutations(p2)):
-    
+        
+        for s_perm in permutations(sentences.keys()):
+
+            s1 = sentences[s_perm[0]]
+            s2 = sentences[s_perm[1]]
+            p1 = pronouns[s_perm[0]]
+            p2 = pronouns[s_perm[1]]
+
+            for i, p1_perm in enumerate(permutations(p1)):
+                for j, p2_perm in enumerate(permutations(p2)):
+
+                    logits_flag = True
+
+                    for n in tqdm(range(n_runs)):
+
                         s_list = [s1, s2]
-                        p_list = [p1_perm, p2_perm]
+                        p_list = [list(p1_perm), list(p2_perm)]
     
                         prompt = role_content_base(*no_game_seq_prompt(p_list, s_list))
     
@@ -108,9 +115,11 @@ def simulate(
                                         pronouns_2=p2)
     
                             measurements_idx.append(Measurement(context=c, measurement=json_output))
+                                                         
+                                
                         except Exception as e:
                             error_count += 1
-                            logger.warning(f"Malformed output: {decoded_output}")
+                            logger.warning(f"Malformed output: {decoded_output}. Error count {error_count}/{n}")
 
         logger.warning(f"{error_count}/{n_runs} not captured.")
         logger.info(f"Successfully collected {idx}. "
