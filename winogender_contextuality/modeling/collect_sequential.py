@@ -73,6 +73,8 @@ def simulate(
         pronouns = {0: ast.literal_eval(df.differences_1[idx]),
                     1: ast.literal_eval(df.differences_2[idx])}
 
+        error_count = 0
+
         #for _ in range(n_runs):
         for s_perm in permutations(sentences.keys()):
 
@@ -92,18 +94,24 @@ def simulate(
                     input, output = mp.get_completion(prompt=prompt, temperature=temperature)
 
                     input_len = input.shape[1]
-                    json_output = ast.literal_eval(
-                        mp.tokenizer.decode(output.sequences[0][input_len - 5:], skip_special_tokens=True)
-                    )
 
-                    c = Context(sent_order=s_perm,
-                                pnoun_order=(i,j),
-                                sentence_1=s1,
-                                sentence_2=s2,
-                                pronouns_1=p1,
-                                pronouns_2=p2)
+                    try:
+                        json_output = ast.literal_eval(
+                            mp.tokenizer.decode(output.sequences[0][input_len - 5:], skip_special_tokens=True)
+                        )
 
-                    measurements_idx.append(Measurement(context=c, measurement=json_output))
+                        c = Context(sent_order=s_perm,
+                                    pnoun_order=(i,j),
+                                    sentence_1=s1,
+                                    sentence_2=s2,
+                                    pronouns_1=p1,
+                                    pronouns_2=p2)
+
+                        measurements_idx.append(Measurement(context=c, measurement=json_output))
+                    except Exception as e:
+                        error_count += 1
+
+                    logger.warning(f"{error_count}/{n_runs} not captured.")
                     logger.info(f"Successfully collected {idx}. "
                                 f"Writing {len(measurements_idx)} measurements to {output_fpath}.")
 
