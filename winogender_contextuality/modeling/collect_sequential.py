@@ -83,7 +83,7 @@ def simulate(
                 for j, p2_perm in enumerate(permutations(p2)):
 
                     s_list = [s1, s2]
-                    p_list = [p1[p1_perm[0]], p1[p1_perm[1]], p2[p2_perm[0]], p2[p2_perm[1]]]
+                    p_list = [p1_perm, p2_perm]
 
                     prompt = role_content_base(*no_game_seq_prompt(p_list, s_list))
 
