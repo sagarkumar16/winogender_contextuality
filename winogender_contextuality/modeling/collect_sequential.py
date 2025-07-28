@@ -57,7 +57,7 @@ def simulate(
         mode=mode,
         model_name=model_name,
         key=HF_KEY,
-        model_path=MODELS_DIR)
+        model_path=MODELS_DIR
 
     output_fpath = output_dir / f"measurements_{model_name.split('/')[-1]}_{temperature}.ndjson"
 
@@ -66,8 +66,8 @@ def simulate(
     for idx in pbar:
         measurements_idx = []
         # Unpacking CSV -- hard coding for now
-        sentences = {0: df.templates_1[idx],
-                     1: df.templates_2[idx]}
+        sentences = {0: df.template_1[idx],
+                     1: df.template_2[idx]}
         pronouns = {0: ast.literal_eval(df.differences_1[idx]),
                     1: ast.literal_eval(df.differences_2[idx])}
 
@@ -100,6 +100,8 @@ def simulate(
                                 pronouns_2=p2)
 
                     measurements_idx.append(Measurement(context=c, measurement=json_output))
+                    logger.info(f"Successfully collected {idx}. "
+                                f"Writing {len(measurements_idx)} measurements to {output_fpath}.")
 
 
         with open(output_fpath, "a") as f:
