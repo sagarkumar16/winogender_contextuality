@@ -89,7 +89,7 @@ def simulate(
 
                     prompt = role_content_base(*no_game_seq_prompt(p_list, s_list))
 
-                    input, output = mp.get_completion(prompt=prompt, temperate=temperature)
+                    input, output = mp.get_completion(prompt=prompt, temperature=temperature)
 
                     input_len = input.shape[1]
                     json_output = ast.literal_eval(output.sequences[0][input_len - 5:])
