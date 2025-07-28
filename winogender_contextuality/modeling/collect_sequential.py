@@ -3,12 +3,15 @@ import json
 import pathlib
 import pandas as pd
 import ast
+import typer
 from dataclasses import dataclass, asdict
 from itertools import permutations
 from winogender_contextuality.modeling.prompting import *
 from winogender_contextuality.modeling.ModelProbs import *
 from winogender_contextuality.config import *
 from winogender_contextuality.utils import *
+
+app = typer.Typer()
 
 @dataclass
 class Context:
@@ -26,14 +29,15 @@ class Measurement:
 
 HF_KEY = os.environ.get("HF_KEY")
 
+@app.command()
 def simulate(
-        input_fpath: pathlib.Path,
-        output_dir: pathlib.Path,
         mode: str,
         model_name: str,
         temperature: float,
         sim: bool,
         n_runs: int = 1000,
+        input_fpath: pathlib.Path = PROCESSED_DATA_DIR / "wino_pairs.tsv",
+        output_dir: pathlib.Path = PROCESSED_DATA_DIR
 ):
 
     """
@@ -55,7 +59,7 @@ def simulate(
         key=HF_KEY,
         model_path=MODELS_DIR)
 
-    output_fpath = output_dir / f"{model_name.split('/')[-1]}_{temperature}.ndjson"
+    output_fpath = output_dir / f"measurements_{model_name.split('/')[-1]}_{temperature}.ndjson"
 
     pbar = tqdm(df.index, desc="Simulating")
 
@@ -102,5 +106,6 @@ def simulate(
             f.write(json.dumps([asdict(m) for m in measurements_idx]) + "\n")
 
 
-
+if __name__ == "__main__":
+    app()
 
