@@ -90,7 +90,6 @@ def simulate(
                         p_list = [p1_perm, p2_perm]
     
                         prompt = role_content_base(*no_game_seq_prompt(p_list, s_list))
-                        print(prompt)
     
                         inputs, output = mp.get_completion(prompt=prompt, temperature=temperature, max_new_tokens=12)
     
