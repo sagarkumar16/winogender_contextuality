@@ -115,30 +115,37 @@ def simulate(
                                         pronouns_1=p1,
                                         pronouns_2=p2)
 
+                            probs = None
 
-                            if logits_flag:
-                                first_token, first_logits, second_token, second_logits = mp.pronoun_logits(
-                                    pronouns_list=p_list,
-                                    generated_sequence = output.sequences[0][input_len:],
-                                    scores = output.scores
-                                )
-                                logger.info(f"Fetched logits for {first_token} and {second_token} positions.")
-                                first_fem_pnoun_token = mp.tokenizer(p1[1])[1]
-                                second_fem_pnoun_token = mp.tokenizer(p2[1])[1]
+                            try:
+                                if logits_flag:
 
-                                first_fem_prob = masked_softmax(first_fem_pnoun_token, first_logits)
-                                second_fem_prob = masked_softmax(second_fem_pnoun_token, second_logits)
+                                    first_token, first_logits, second_token, second_logits = mp.pronoun_logits(
+                                        pronouns_list=p_list,
+                                        generated_sequence = output.sequences[0][input_len:],
+                                        scores = output.scores
+                                    )
+                                    logger.info(f"Fetched logits for {first_token} and {second_token} positions.")
+                                    first_fem_pnoun_token = mp.tokenizer(p1[1]).input_ids[1]
+                                    second_fem_pnoun_token = mp.tokenizer(p2[1]).input_ids[1]
+    
+                                    first_fem_prob = masked_softmax(first_fem_pnoun_token, first_logits[0])
+                                    second_fem_prob = masked_softmax(second_fem_pnoun_token, second_logits[0])
+    
+                                    probs = (first_fem_prob, second_fem_prob)
+    
+                                    logits_flag = False
+    
+                                else:
+                                    pass
 
-                                probs = (first_fem_prob, second_fem_prob)
+                            except Exception as e:
+                                logger.error(e)
 
-                                logits_flag = False
-
-                            else:
-                                probs = None
-
-
-                            measurements_idx.append(Measurement(context=c, measurement=json_output, probabilities=probs)) 
-                                
+                            m = Measurement(context=c, measurement=json_output, probabilities=probs)
+                            measurements_idx.append(m)
+                            with open(output_fpath, "a") as f:
+                                f.write(json.dumps(asdict(m))+"\n")
                                 
                         except Exception as e:
                             error_count += 1
@@ -148,8 +155,8 @@ def simulate(
         logger.info(f"Successfully collected {idx}. "
                     f"Writing {len(measurements_idx)} measurements to {output_fpath}.")
 
-        with open(output_fpath, "a") as f:
-            f.write(json.dumps([asdict(m) for m in measurements_idx]) + "\n")
+        #with open(output_fpath, "a") as f:
+       #    f.write(json.dumps([asdict(m) for m in measurements_idx]) + "\n")
 
 
 if __name__ == "__main__":
