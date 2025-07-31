@@ -127,7 +127,6 @@ def simulate(
                                         scores = output.scores
                                     )
                                 
-                                logger.info(f"Fetched logits for {first_token} and {second_token} positions.")
                                 first_ids = mp.tokenizer(p1[1]).input_ids
                                 second_ids = mp.tokenizer(p2[1]).input_ids
 
@@ -137,7 +136,7 @@ def simulate(
                                 first_fem_prob = masked_softmax(first_fem_pnoun_token, first_logits[0])
                                 second_fem_prob = masked_softmax(second_fem_pnoun_token, second_logits[0])
 
-                                probs = (first_fem_prob, second_fem_prob)
+                                probs = (first_fem_prob.item(), second_fem_prob.item())
 
                             except Exception as e:
                                 logger.error(f"Probability extraction failed: {e}")
@@ -149,7 +148,7 @@ def simulate(
                                 
                         except Exception as e:
                             error_count += 1
-                            logger.warning(f"Malformed output: {decoded_output}. Error count {error_count}/{n}")
+                            logger.warning(f"Error {e} for output: {decoded_output}. Error count {error_count}/{n}")
 
         logger.warning(f"{error_count}/{n_runs} not captured.")
         logger.info(f"Successfully collected {idx}. "
