@@ -28,7 +28,7 @@ class Measurement:
     index: int 
     context: Context
     measurement: dict[str, str]
-    probabilities: tuple(float) | None
+    probabilities: tuple[float] | None
 
 HF_KEY = os.environ.get("HF_KEY")
 
