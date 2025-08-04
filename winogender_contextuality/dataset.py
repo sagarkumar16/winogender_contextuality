@@ -35,8 +35,8 @@ def main(
 
         for idx in chunk.index:
             s = chunk.sentence[idx]
-            s = s.replace('$OCCUPATION', f"{df['occupation(0)'][idx]}")
-            s = s.replace('$PARTICIPANT', f"{df['other-participant(1)'][idx]}")
+            s = s.replace('$OCCUPATION', f"{chunk['occupation(0)'][idx]}")
+            s = s.replace('$PARTICIPANT', f"{chunk['other-participant(1)'][idx]}")
             match = re.search(r'\$[a-zA-Z_]\w*', s)
             if match:
                 pronoun_type = match.group(0)

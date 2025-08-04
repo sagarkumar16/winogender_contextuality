@@ -25,9 +25,10 @@ class Context:
 
 @dataclass
 class Measurement:
+    index: int 
     context: Context
     measurement: dict[str, str]
-    probabilities: float | None
+    probabilities: tuple[float] | None
 
 HF_KEY = os.environ.get("HF_KEY")
 
@@ -77,7 +78,7 @@ def simulate(
         pronouns = {0: ast.literal_eval(df.differences_1[idx]),
                     1: ast.literal_eval(df.differences_2[idx])}
 
-        error_count = 0
+        
 
         
         for s_perm in permutations(sentences.keys()):
@@ -91,7 +92,8 @@ def simulate(
                 for j, p2_perm in enumerate(permutations(p2)):
 
                     logits_flag = True
-
+                    
+                    error_count = 0
                     for n in tqdm(range(n_runs)):
 
                         s_list = [s1, s2]
@@ -118,38 +120,35 @@ def simulate(
                             probs = None
 
                             try:
-                                if logits_flag:
-
-                                    first_token, first_logits, second_token, second_logits = mp.pronoun_logits(
+                                
+                                first_token, first_logits, second_token, second_logits = mp.pronoun_logits(
                                         pronouns_list=p_list,
                                         generated_sequence = output.sequences[0][input_len:],
                                         scores = output.scores
                                     )
-                                    logger.info(f"Fetched logits for {first_token} and {second_token} positions.")
-                                    first_fem_pnoun_token = mp.tokenizer(p1[1]).input_ids[1]
-                                    second_fem_pnoun_token = mp.tokenizer(p2[1]).input_ids[1]
-    
-                                    first_fem_prob = masked_softmax(first_fem_pnoun_token, first_logits[0])
-                                    second_fem_prob = masked_softmax(second_fem_pnoun_token, second_logits[0])
-    
-                                    probs = (first_fem_prob, second_fem_prob)
-    
-                                    logits_flag = False
-    
-                                else:
-                                    pass
+                                
+                                first_ids = mp.tokenizer(p1[1]).input_ids
+                                second_ids = mp.tokenizer(p2[1]).input_ids
+
+                                first_fem_pnoun_token = first_ids[-1]
+                                second_fem_pnoun_token = second_ids[-1]
+
+                                first_fem_prob = masked_softmax(first_fem_pnoun_token, first_logits[0])
+                                second_fem_prob = masked_softmax(second_fem_pnoun_token, second_logits[0])
+
+                                probs = (first_fem_prob.item(), second_fem_prob.item())
 
                             except Exception as e:
-                                logger.error(e)
+                                logger.error(f"Probability extraction failed: {e}")
 
-                            m = Measurement(context=c, measurement=json_output, probabilities=probs)
+                            m = Measurement(index=idx, context=c, measurement=json_output, probabilities=probs)
                             measurements_idx.append(m)
                             with open(output_fpath, "a") as f:
                                 f.write(json.dumps(asdict(m))+"\n")
                                 
                         except Exception as e:
                             error_count += 1
-                            logger.warning(f"Malformed output: {decoded_output}. Error count {error_count}/{n}")
+                            logger.warning(f"Error {e} for output: {decoded_output}. Error count {error_count}/{n}")
 
         logger.warning(f"{error_count}/{n_runs} not captured.")
         logger.info(f"Successfully collected {idx}. "
