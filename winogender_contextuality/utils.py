@@ -3,6 +3,7 @@ import torch
 import typer
 import torch.nn.functional as F
 import ast
+import json
 
 app = typer.Typer()
 
@@ -45,4 +46,20 @@ def reverse_pronouns(options: str,
         return pronouns[::-1]
     else:
         return pronouns
+
+def load_ndjson(data_path) -> list[dict]:
+
+    """
+    Loads ndjson files into memory as dictionaries.
+    :param data_path: path to ndjson file
+    :return: list of dictionaries
+    """
+
+    data = []
+    with open(data_path, "r") as f:
+        for line in f:
+            if line.strip():  # avoid empty lines
+                data.append(json.loads(line))
+
+    return data
     
