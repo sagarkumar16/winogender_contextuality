@@ -39,8 +39,8 @@ def simulate(
         temperature: float,
         sim: bool,
         n_runs: int = 1000,
-        input_fpath: pathlib.Path = PROCESSED_DATA_DIR / "wino_pairs.tsv",
-        output_dir: pathlib.Path = PROCESSED_DATA_DIR
+        input_fpath: pathlib.Path = INTERIM_DATA_DIR / "wino_pairs.tsv",
+        output_dir: pathlib.Path = INTERIM_DATA_DIR
 ):
 
     """
