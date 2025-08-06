@@ -295,8 +295,8 @@ def calculate_pronouns_nc_fraction(
     for row in arr:
         # marginals
         dzhafarov_arr = row.reshape(2,2)
-        px = np.sum(dzhafarov_arr, axis=1)[0] # indexing on the basis of index 1 (female pronoun probability)
-        py = np.sum(dzhafarov_arr, axis=0)[0]
+        px = np.sum(dzhafarov_arr, axis=1)[1] # indexing on the basis of index 1 (female pronoun probability)
+        py = np.sum(dzhafarov_arr, axis=0)[1]
         pxy = dzhafarov_arr[1,1]
 
         V1 = cbd_expectation(px)
