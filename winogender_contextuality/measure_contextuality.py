@@ -55,57 +55,129 @@ def measure_contextualities(
     pronoun_contextual_fraction = []
     pronoun_cbd = []
 
+    processed_indices = []
+    results_tracker = {
+        'sentence_order': {},  # idx -> {key: result, ...}
+        'sheaf_bool': {},  # idx -> result
+        'sheaf_status': {},  # idx -> result
+        'contextual_fraction': {},  # idx -> result
+        'pronoun_nc': {}  # idx -> result
+    }
+
     for idx in pbar:
+        processed_indices.append(idx)
+
+        # Initialize tracking for this index
+        results_tracker['sentence_order'][idx] = {}
 
         # Sentence Order Contextualities
         order_keys = ["".join(s) for s in product(pronoun_order_dict.keys(), repeat=2)]
         order_vals = [list(o) for o in product(pronoun_order_dict.values(), repeat=2)]
-        try:
-            for key,val in zip(order_keys, order_vals):
+
+        for key, val in zip(order_keys, order_vals):
+            try:
                 measurement_data = sentence_order_results(idx, data, pnoun_order=val)
                 sentence_nc_frac = calculate_sentence_nc_fraction(measurement_data)
-                sentence_cbd[key].append(sentence_nc_frac)
+                results_tracker['sentence_order'][idx][key] = sentence_nc_frac
 
-        except Exception as e:
-            logger.error(f"Error on index {idx} during sentence order calculation: {e}")
+            except Exception as e:
+                logger.error(f"Error on index {idx} for sentence order key {key}: {e}")
+                results_tracker['sentence_order'][idx][key] = None  # Mark as failed
 
+        # Pronoun Contextualities
         try:
-            # Pronoun Contextualities
             ms = MeasurementScenario(observations=['sentence_1', 'sentence_2'],
                                      measurements=['m_first', 'f_first'],
-                                     outcomes=[0,1])
+                                     outcomes=[0, 1])
             ms.scenario.values = pronoun_context_array(idx, data)
 
+            # Sheaf contextuality
             try:
-                # Sheaf
                 feasibility = check_feasibility(ms)
-                pronoun_sheaf_contextuality_bool.append(feasibility[0])
-                pronoun_sheaf_contextuality_status.append(feasibility[1].status)
-
-                contextual_fraction = calculate_contextual_fraction_abramsky(ms)
-                pronoun_contextual_fraction.append(contextual_fraction)
-
+                results_tracker['sheaf_bool'][idx] = feasibility[0]
+                results_tracker['sheaf_status'][idx] = feasibility[1].status
             except Exception as e:
                 logger.error(f"Error on index {idx} during sheaf contextuality measurement: {e}")
+                results_tracker['sheaf_bool'][idx] = None
+                results_tracker['sheaf_status'][idx] = None
 
+            # Contextual fraction
+            try:
+                contextual_fraction = calculate_contextual_fraction_abramsky(ms)
+                results_tracker['contextual_fraction'][idx] = contextual_fraction
+            except Exception as e:
+                logger.error(f"Error on index {idx} during contextual fraction calculation: {e}")
+                results_tracker['contextual_fraction'][idx] = None
+
+            # Pronoun NC fraction
             try:
                 pronoun_nc_frac = calculate_pronouns_nc_fraction(ms.scenario.values)
-                pronoun_cbd.append(pronoun_nc_frac)
-
+                results_tracker['pronoun_nc'][idx] = pronoun_nc_frac
             except Exception as e:
                 logger.error(f"Error on index {idx} during pronoun CbD calculation: {e}")
+                results_tracker['pronoun_nc'][idx] = None
 
         except Exception as e:
             logger.error(f"Error on index {idx} during construction of measurement scenario: {e}")
+            # Mark all pronoun-related measurements as failed for this index
+            results_tracker['sheaf_bool'][idx] = None
+            results_tracker['sheaf_status'][idx] = None
+            results_tracker['contextual_fraction'][idx] = None
+            results_tracker['pronoun_nc'][idx] = None
 
-    for key,val in sentence_cbd.items():
+    logger.success(f"Completed all contextuality calculations.")
+
+    # Sentence order results
+    for key in sentence_cbd.keys():
+        sentence_cbd[key] = [
+            results_tracker['sentence_order'][idx].get(key, None)
+            for idx in processed_indices
+        ]
+
+    # Pronoun results
+    pronoun_sheaf_contextuality_bool = [
+        results_tracker['sheaf_bool'].get(idx, None)
+        for idx in processed_indices
+    ]
+
+    pronoun_sheaf_contextuality_status = [
+        results_tracker['sheaf_status'].get(idx, None)
+        for idx in processed_indices
+    ]
+
+    pronoun_contextual_fraction = [
+        results_tracker['contextual_fraction'].get(idx, None)
+        for idx in processed_indices
+    ]
+
+    pronoun_cbd = [
+        results_tracker['pronoun_nc'].get(idx, None)
+        for idx in processed_indices
+    ]
+
+    # Add to dataframe - all lists now have the same length
+    for key, val in sentence_cbd.items():
         df[f"sentence_{key}"] = val
+
     df['pronoun_sheaf_bool'] = pronoun_sheaf_contextuality_bool
     df['pronoun_sheaf_status'] = pronoun_sheaf_contextuality_status
     df['pronoun_cf'] = pronoun_contextual_fraction
     df['pronoun_nc'] = pronoun_cbd
 
-    logger.success(f"Completed all contextuality calculations.")
+    # Log summary of failures
+    total_processed = len(processed_indices)
+    for measurement_type, results in results_tracker.items():
+        if measurement_type == 'sentence_order':
+            for key in sentence_cbd.keys():
+                failed_count = sum(1 for idx in processed_indices
+                                   if results[idx].get(key) is None)
+                if failed_count > 0:
+                    logger.info(f"Sentence order {key}: {failed_count}/{total_processed} failures")
+        else:
+            failed_count = sum(1 for idx in processed_indices
+                               if results.get(idx) is None)
+            if failed_count > 0:
+                logger.info(f"{measurement_type}: {failed_count}/{total_processed} failures")
 
     if extension == '.csv':
         df.to_csv(OUTPUT_PATH, index=True)
