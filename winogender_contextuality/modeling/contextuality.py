@@ -3,6 +3,8 @@ import xarray as xr
 from scipy.optimize import linprog, OptimizeResult
 from itertools import product
 from loguru import logger
+from collect_sequential import Measurement
+from collections import Counter
 
 """
 Assesses contextuality by calling a ModelProbs class to (1) determine if a joint space can be constructed
@@ -31,15 +33,6 @@ class MeasurementScenario:
         self.observations = observations
         self.measurements = measurements
         self.outcomes = outcomes
-
-        self.scenario = None
-        self.bunches = None
-
-    def get_bunch_matrices(self):
-        return None
-
-    def get_scenario_matrix(self) -> None:
-
 
         ## all possible sentence-input prompt pairs
         self.contexts = list(product(self.observations, self.measurements))
@@ -203,23 +196,214 @@ def calculate_contextual_fraction_abramsky(measurement_scenario: MeasurementScen
         return np.nan
 
 
-class CyclicCbDModel:
+def cbd_expectation(px: float):
 
     """
-    Class with data structures and methods for calculating contextuality in n-cyclic systems using the
-    Contextuality-by-Default framework.
+    Returns the expectation value of a random variable, given its marginal probability (as per Dzhafarov)
+    :param px: marginal probability
+    :return: expectation value
+    """
+    return 2*px - 1
 
-    Based on data structures employed in this paper: http://dx.doi.org/10.1098/rsta.2015.0099
+def cbd_correlation(px: float,
+                    py: float,
+                    pxy: float):
+    """
+    Returns the correlation of two random variables, given their marginals and joint (as per Dzhafarov)
+    :param px: marginal probability of X
+    :param py: marginal probability of Y
+    :param pxy: joint probability
+    :return:
+    """
+    return 4*pxy - 2*px - 2*py + 1
 
-    Currently only implemented for dimension 2.
+def cbd_s1_4cycle(w,x,y,z):
+    term1 = abs(w+x+y-z)
+    term2 = abs(w+x-y-z)
+    term3 = abs(w-x+y+z)
+    term4 = abs(-w+x+y+z)
+    return max(term1,term2,term3,term4)
+
+
+def pronoun_context_array(
+        index: int,
+        data: list[dict] | list[Measurement],
+        forward: bool = True
+) -> np.ndarray:
+    """
+    Given data in the form of a list of Measurement objects (see collect_sequential.py) OR equivalent dictionaries,
+    this function outputs the measurement scenario array, as described in sheaf-contextual approaches to contextuality.
+
+    :param index: integer index sentence pair
+    :param data: list of Measurement objects (or equivalently structured dictionaries)
+    :param forward: Whether sentences should be in forward or reverse order (default=True)
+    :return: measurement scenario array
+    """
+    # Constants
+    female_pnouns = {'she', 'her', 'hers'}
+    orientations = [[0, 0], [0, 1], [1, 0], [1, 1]]
+
+    # Sentence order control
+    if forward == True:
+        sentence_order = [0, 1]
+    else:
+        sentence_order = [1, 0]
+
+    # Loading data and creating empty dictionary
+    measurement_data = [d for d in data if (d['index'] == index) and (d['context']['sent_order'] == sentence_order)]
+    measurement_dict = {tuple(o): {tuple(o): 0 for o in orientations} for o in orientations}
+    print(f"Checking contextuality on basis of {len(measurement_data)} measurements.")
+
+    # Collecting empirical probabilities
+    for d in measurement_data:
+        orientation = d['context']['pnoun_order']
+        measurement = d['measurement']
+        encoded_m = tuple([val in female_pnouns for val in measurement.values()])
+        measurement_dict[tuple(orientation)][encoded_m] += 1
+
+    # Converting dictionary of dictionaries to array
+    arr_list = []
+    for outcome_dict in measurement_dict.values():
+        ctx_total = sum(outcome_dict.values())
+        ctx_list = []
+        for val in outcome_dict.values():
+            try:
+                ctx_list.append(val / ctx_total)
+            except ZeroDivisionError:
+                ctx_list.append(0)
+
+        arr_list.append(ctx_list)
+    arr = np.array(arr_list)
+
+    return arr
+
+def calculate_pronouns_nc_fraction(
+        arr: np.ndarray
+) -> float:
 
     """
+    Calculates the noncontextual fraction, as per Dzhafarov for a 4-cycle situation with data structured as a list of
+    Measurement objects.
 
-    def __init__(self,
-                 observations: list,
-                 contexts: list,
-                 ):
-        return
+    :param arr: MeasurementScenario.scenario.values array
+    """
+
+    correlations = []
+    vs = []
+    ws = []
+
+    for row in arr:
+        # marginals
+        dzhafarov_arr = row.reshape(2,2)
+        px = np.sum(dzhafarov_arr, axis=1)[0] # indexing on the basis of index 1 (female pronoun probability)
+        py = np.sum(dzhafarov_arr, axis=0)[0]
+        pxy = dzhafarov_arr[1,1]
+
+        V1 = cbd_expectation(px)
+        W2 = cbd_expectation(py)
+        V1W2 = cbd_correlation(px,py,pxy)
+
+        correlations.append(V1W2)
+        vs.append(V1)
+        ws.append(W2)
+
+    # Calculating the S1 term
+    s1_term = cbd_s1_4cycle(*correlations)
+
+    # Calculating the sum of differences
+    rotated_ws = [ws[-1]]+ws[:-1]
+    sum_term = np.sum([abs(v-w) for v,w in zip(vs,rotated_ws)])
+
+    delta_c = s1_term - 2 - sum_term
+
+    return delta_c
+
+# Sentence-order contextuality via CBD
+def sentence_order_results(idx: int,
+                           model_measurements: list[Measurement],
+                           pnoun_order: list[int] = [0, 0],
+                           default_pronoun: int = 1  # 0 for male, 1 for female
+                           ) -> dict:
+    """
+    Creates a dictionary given a subset of measurements for a single pair of sentences which summarizes the results of
+    all runs, separated on the basis of sentence order, filtered for only one pronoun order.
+
+    :param idx: integer index sentence pair
+    :param model_measurements: list of Measurement objects (or equivalently structured dictionaries)
+    :param pnoun_order: filtered pronoun order
+    :param default_pronoun: pronoun index for probabiity calculations (default = 1 for female)
+    :return:
+    """
+    sentence_measurements = [d for d in model_measurements if d['index'] == idx]
+    test_measurements = [d for d in sentence_measurements if d['context']['pnoun_order'] == pnoun_order]
+
+    data_dict = {'forward': {'pnoun_1': [], 'pnoun_2': [], 'pronouns': []},
+                 'reverse': {'pnoun_1': [], 'pnoun_2': [], 'pronouns': []}}
+
+    for d in test_measurements:
+        context = d['context']['sent_order']
+        if context == [0, 1]:
+            dict_key = 'forward'
+            pnoun_1 = d['measurement']['BLANK1']
+            pnoun_2 = d['measurement']['BLANK2']
+            default_p1 = d['context']['pronouns_1'][default_pronoun]
+            default_p2 = d['context']['pronouns_2'][default_pronoun]
+        else:
+            dict_key = 'reverse'
+            pnoun_1 = d['measurement']['BLANK2']
+            pnoun_2 = d['measurement']['BLANK1']
+            default_p1 = d['context']['pronouns_2'][default_pronoun]
+            default_p2 = d['context']['pronouns_1'][default_pronoun]
+
+        data_dict[dict_key]['pnoun_1'].append(pnoun_1.lower())
+        data_dict[dict_key]['pnoun_2'].append(pnoun_2.lower())
+        data_dict[dict_key]['pronouns'] = [default_p1, default_p2]
+
+    return data_dict
+
+def calculate_sentence_nc_fraction(data_dict: dict) -> float:
+
+    """
+    Calculates noncontextual fraction based on the output from sentence_order_results()
+    
+    :param data_dict: output of sentence_order_results()
+    :return: noncontextual fraction
+    """
+    C1_size = len(data_dict['forward']['pnoun_1'])
+    C2_size = len(data_dict['reverse']['pnoun_1'])
+
+    V1_dict = Counter(data_dict['forward']['pnoun_1'])
+    W2_dict = Counter(data_dict['forward']['pnoun_2'])
+    W1_dict = Counter(data_dict['reverse']['pnoun_1'])
+    V2_dict = Counter(data_dict['reverse']['pnoun_2'])
+
+    target_f = data_dict['forward']['pronouns']
+    target_r = data_dict['reverse']['pronouns']
+
+    V1 = V1_dict.get(target_f[0], 0) / C1_size
+    W2 = W2_dict.get(target_f[1], 0) / C1_size
+    W1 = W1_dict.get(target_r[0], 0) / C2_size
+    V2 = V2_dict.get(target_r[1], 0) / C2_size
+
+    # Compute joint probabilities
+    forward_trials = zip(data_dict['forward']['pnoun_1'], data_dict['forward']['pnoun_2'])
+    count_c1 = sum(1 for x, y in forward_trials if x == target_f[0] and y == target_f[1])
+    V1W2 = count_c1 / C1_size
+
+    reverse_trials = zip(data_dict['reverse']['pnoun_1'], data_dict['reverse']['pnoun_2'])
+    count_c2 = sum(1 for x, y in reverse_trials if x == target_r[0] and y == target_r[1])
+    V2W1 = count_c2 / C2_size
+
+    delta_c = (
+            abs(cbd_correlation(V1, V2, V1W2) - cbd_correlation(V2, W1, V2W1))
+            - (abs(cbd_expectation(V1) - cbd_expectation(W1))
+               + abs(cbd_expectation(V2) - cbd_expectation(W2)))
+    )
+
+    return delta_c
+
+
+
 
 
 

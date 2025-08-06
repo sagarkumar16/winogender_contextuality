@@ -41,8 +41,13 @@ export HF_KEY="your-key-here"
 ## Prompting
 Prompts should have an assistant role such that the first token generated is the BLANK which is being resolved. 
 
+## Data Collection
+Data from models is collected by...
 
-## Project Organization
+## Data Analysis 
+Contextuality can be measured... 
+
+## Project Organization 
 
 ```
 ├── LICENSE            <- Open-source license if one is chosen

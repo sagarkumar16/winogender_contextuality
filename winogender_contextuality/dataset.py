@@ -7,7 +7,7 @@ import re
 import pickle
 import typer
 
-from config import PROCESSED_DATA_DIR, RAW_DATA_DIR
+from config import PROCESSED_DATA_DIR, RAW_DATA_DIR, INTERIM_DATA_DIR
 
 app = typer.Typer()
 
@@ -21,7 +21,7 @@ pronouns_dict = {
 @app.command()
 def main(
     input_path: Path = RAW_DATA_DIR / "templates.tsv",
-    output_path: Path = PROCESSED_DATA_DIR / "wino_pairs.tsv",
+    output_path: Path = INTERIM_DATA_DIR / "wino_pairs.tsv",
 ):
     logger.info(f"Processing {input_path}...")
     df = pd.read_csv(input_path, sep="\t")
