@@ -5,8 +5,6 @@ import typer
 import ast
 from itertools import chain, product
 from datetime import datetime
-from winogender_contextuality.modeling.prompting import *
-from winogender_contextuality.modeling.ModelProbs import *
 from winogender_contextuality.modeling.contextuality import *
 from winogender_contextuality.config import *
 from winogender_contextuality.utils import *

@@ -3,7 +3,7 @@ import xarray as xr
 from scipy.optimize import linprog, OptimizeResult
 from itertools import product
 from loguru import logger
-from collect_sequential import Measurement
+from winogender_contextuality.modeling.collect_sequential import Measurement
 from collections import Counter
 
 """

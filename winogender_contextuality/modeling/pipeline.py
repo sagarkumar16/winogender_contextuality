@@ -11,6 +11,11 @@ from winogender_contextuality.modeling.contextuality import *
 from winogender_contextuality.config import *
 from winogender_contextuality.utils import *
 
+""" 
+THIS CODE IS DEFUNCT
+"""
+
+
 
 app = typer.Typer()
 HF_KEY = os.environ.get("HF_KEY")
