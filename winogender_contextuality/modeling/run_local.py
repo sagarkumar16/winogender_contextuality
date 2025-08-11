@@ -1,6 +1,6 @@
 import torch
 from torch import bfloat16
-from transformers import AutoModelForCausalLM, BitsAndBytesConfig, PreTrainedModel
+from transformers import AutoModelForCausalLM, BitsAndBytesConfig, PreTrainedModel, AutoTokenizer
 import huggingface_hub
 from winogender_contextuality.config import *
 
@@ -40,11 +40,20 @@ def load_model(model_name: str,
         model.config.use_cache = False
     else:
         # quantized version
-        logger.info('Loading quantized model', flush=True)
-        bnb_config = BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_quant_type='nf4',
-                                                     bnb_4bit_use_double_quant=True, bnb_4bit_compute_dtype=bfloat16)
-        model = AutoModelForCausalLM.from_pretrained(model_name, device_map=GPU_INDEX, quantization_config=bnb_config,
-                                                     cache_dir=cache_dir)
+        bnb_config = BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_quant_type='nf4',
+            bnb_4bit_use_double_quant=True,
+            bnb_4bit_compute_dtype=torch.bfloat16,  # note: use torch.bfloat16
+        )
+
+        tok = AutoTokenizer.from_pretrained(model_name)
+        model = AutoModelForCausalLM.from_pretrained(
+            model_name,
+            device_map="auto",
+            quantization_config=bnb_config,
+            cache_dir=cache_dir,
+        )
         model.config.use_cache = False
 
     logger.info(f'Model cached in {cache_dir}', flush=True)
