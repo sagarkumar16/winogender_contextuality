@@ -65,7 +65,8 @@ def simulate(
         mode=mode,
         model_name=model_name,
         key=HF_KEY,
-        model_path=MODELS_DIR)
+        model_path=MODELS_DIR,
+        quantized=quantized)
 
     mp.load_model()
 
