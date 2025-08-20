@@ -211,14 +211,13 @@ def generate_one_pronoun(
             p1 = pronouns[s_perm[0]]
             p2 = pronouns[s_perm[1]]
 
-            first_pronouns = [None] + p1
             first_sentences = [None, s1]
 
             for j, p2_perm in enumerate(permutations(p2)):
                 error_count = 0
                 for first_sentence in first_sentences:
                     if first_sentence is not None:
-                        for first_pronoun in first_pronouns:
+                        for first_pronoun in p1:
                             first_sentence = first_sentence.replace('BLANK', first_pronoun)
 
                             for n in tqdm(range(n_runs)):
