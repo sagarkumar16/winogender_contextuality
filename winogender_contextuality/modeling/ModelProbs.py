@@ -70,8 +70,7 @@ class ModelProbs:
             raise NotImplementedError
 
         else:
-            inputs = (self.tokenizer.apply_chat_template(prompt, return_tensors="pt", continue_final_message=True)
-                      .to(self.gpu))
+            inputs = self.tokenizer.apply_chat_template(prompt, return_tensors="pt", continue_final_message=True).to(self.gpu)
             with torch.no_grad():
                 outputs = self.model(inputs)
 
