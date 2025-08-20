@@ -228,7 +228,8 @@ def generate_one_pronoun(
 
                                 # Model Logits
                                 model_logits = mp.get_raw_logits(prompt=prompt)
-
+                                pronoun_idxs = mp.get_token_ids(options=pronouns[1])
+                                pronoun_logits = model_logits[pronoun_idxs].cpu().numpy()
 
                                 inputs, output = mp.get_completion(prompt=prompt, temperature=temperature,
                                                                    max_new_tokens=12)
@@ -273,7 +274,7 @@ def generate_one_pronoun(
                                         logger.error(f"Probability extraction failed: {e}")
 
                                     m = Measurement(index=idx, context=c, measurement=json_output, probabilities=probs,
-                                                    logits=model_logits)
+                                                    logits=pronoun_logits)
                                     measurements_idx.append(m)
                                     with open(output_fpath, "a") as f:
                                         f.write(json.dumps(asdict(m)) + "\n")
