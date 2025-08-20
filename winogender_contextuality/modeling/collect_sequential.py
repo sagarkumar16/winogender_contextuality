@@ -242,7 +242,7 @@ def generate_one_pronoun(
                                     json_output = ast.literal_eval(decoded_output)
 
                                     c = Context(sent_order=s_perm,
-                                                pnoun_order=(i, j),
+                                                pnoun_order=j,
                                                 sentence_1=s1,
                                                 sentence_2=s2,
                                                 pronouns_1=p1,
