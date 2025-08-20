@@ -5,6 +5,7 @@ import pandas as pd
 import ast
 import typer
 from datetime import datetime
+import numpy as np
 from dataclasses import dataclass, asdict
 from itertools import permutations
 from winogender_contextuality.modeling.prompting import *
@@ -56,7 +57,7 @@ def generate_two_pronouns(
     """
 
     logger.add(LOG_DIR / f"data_collection_{datetime.now()}.log")
-    output_fpath = output_dir / f"measurements_{model_name.split('/')[-1]}_{temperature}.ndjson"
+    output_fpath = output_dir / f"two_pnoun_measurements_{model_name.split('/')[-1]}_{temperature}.ndjson"
     
     df = pd.read_csv(input_fpath, sep="\t")
     mp = ModelProbs(
@@ -139,7 +140,7 @@ def generate_two_pronouns(
                             except Exception as e:
                                 logger.error(f"Probability extraction failed: {e}")
 
-                            m = Measurement(index=idx, context=c, measurement=json_output, probabilities=probs)
+                            m = Measurement(index=idx, context=c, measurement=json_output, probabilities=probs, logits=np.nan)
                             measurements_idx.append(m)
                             with open(output_fpath, "a") as f:
                                 f.write(json.dumps(asdict(m))+"\n")
@@ -181,7 +182,7 @@ def generate_one_pronoun(
     """
 
     logger.add(LOG_DIR / f"data_collection_{datetime.now()}.log")
-    output_fpath = output_dir / f"measurements_{model_name.split('/')[-1]}_{temperature}.ndjson"
+    output_fpath = output_dir / f"single_pnoun_measurements_{model_name.split('/')[-1]}_{temperature}.ndjson"
     logits = []
 
     df = pd.read_csv(input_fpath, sep="\t")
