@@ -56,7 +56,7 @@ def generate_two_pronouns(
     """
 
     logger.add(LOG_DIR / f"data_collection_{datetime.now()}.log")
-    output_fpath = output_dir / f"measurements_{model_name.split('/')[-1]}_{temperature}.ndjson"
+    output_fpath = output_dir / f"two_pronouns_measurements_{model_name.split('/')[-1]}_{temperature}.ndjson"
     
     df = pd.read_csv(input_fpath, sep="\t")
     mp = ModelProbs(
@@ -183,7 +183,7 @@ def generate_one_pronoun(
     """
 
     logger.add(LOG_DIR / f"data_collection_{datetime.now()}.log")
-    output_fpath = output_dir / f"measurements_{model_name.split('/')[-1]}_{temperature}.ndjson"
+    output_fpath = output_dir / f"one_pronoun_measurements_{model_name.split('/')[-1]}_{temperature}.ndjson"
     logits = []
 
     df = pd.read_csv(input_fpath, sep="\t")
