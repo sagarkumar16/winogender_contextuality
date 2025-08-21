@@ -221,49 +221,51 @@ def generate_one_pronoun(
                     if first_sentence is not None:
                         for first_pronoun in p1:
                             first_sentence = first_sentence.replace('BLANK', first_pronoun)
+                    else:
+                        first_pronoun = None
 
-                            for n in tqdm(range(n_runs)):
-                                p_list = list(p2_perm)
-                                prompt = role_content_base(*no_game_seq_logit_prompt(option_set=p_list,
-                                                                    free_sentence=s2,
-                                                                    fixed_sentence=first_sentence))
+                        for n in tqdm(range(n_runs)):
+                            p_list = list(p2_perm)
+                            prompt = role_content_base(*no_game_seq_logit_prompt(option_set=p_list,
+                                                                free_sentence=s2,
+                                                                fixed_sentence=first_sentence))
 
-                                # Model Logits
-                                model_logits = mp.get_raw_logits(prompt=prompt).cpu()
-                                pronoun_idxs = mp.get_token_ids(options=pronouns[1])
-                                pronoun_logits = model_logits[[sum(pronoun_idxs, [])]].tolist()
+                            # Model Logits
+                            model_logits = mp.get_raw_logits(prompt=prompt).cpu()
+                            pronoun_idxs = mp.get_token_ids(options=pronouns[1])
+                            pronoun_logits = model_logits[[sum(pronoun_idxs, [])]].tolist()
 
-                                inputs, output = mp.get_completion(prompt=prompt, temperature=temperature,
-                                                                   max_new_tokens=12)
+                            inputs, output = mp.get_completion(prompt=prompt, temperature=temperature,
+                                                               max_new_tokens=12)
 
-                                # Generation Logits
-                                input_len = inputs.shape[1]
-                                decoded_output = mp.tokenizer.decode(output.sequences[0][input_len - 5:],
-                                                                     skip_special_tokens=True)
+                            # Generation Logits
+                            input_len = inputs.shape[1]
+                            decoded_output = mp.tokenizer.decode(output.sequences[0][input_len - 5:],
+                                                                 skip_special_tokens=True)
 
-                                try:
-                                    json_output = ast.literal_eval(decoded_output)
+                            try:
+                                json_output = ast.literal_eval(decoded_output)
 
-                                    c = Context(sent_order=s_perm,
-                                                pnoun_order=j,
-                                                sentence_1=first_sentence,
-                                                sentence_2=s2,
-                                                pronouns_1=p1,
-                                                pronouns_2=p2)
+                                c = Context(sent_order=s_perm,
+                                            pnoun_order=(first_pronoun,j),
+                                            sentence_1=first_sentence,
+                                            sentence_2=s2,
+                                            pronouns_1=p1,
+                                            pronouns_2=p2)
 
-                                    probs = None
+                                probs = None
 
-                                    m = Measurement(index=idx, context=c, measurement=json_output, probabilities=probs,
-                                                    logits=pronoun_logits)
+                                m = Measurement(index=idx, context=c, measurement=json_output, probabilities=probs,
+                                                logits=pronoun_logits)
 
-                                    measurements_idx.append(m)
-                                    with open(output_fpath, "a") as f:
-                                        f.write(json.dumps(asdict(m)) + "\n")
+                                measurements_idx.append(m)
+                                with open(output_fpath, "a") as f:
+                                    f.write(json.dumps(asdict(m)) + "\n")
 
-                                except Exception as e:
-                                    error_count += 1
-                                    logger.warning(f"Error {e} for output: {decoded_output}. "
-                                                   f"Error count {error_count}/{n}")
+                            except Exception as e:
+                                error_count += 1
+                                logger.warning(f"Error {e} for output: {decoded_output}. "
+                                               f"Error count {error_count}/{n}")
 
                 logger.warning(f"{error_count}/{n_runs} not captured.")
         logger.info(f"Successfully collected {idx}. "
