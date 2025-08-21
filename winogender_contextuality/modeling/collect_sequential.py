@@ -29,7 +29,7 @@ class Measurement:
     context: Context
     measurement: dict[str, str]
     probabilities: tuple[float] | None
-    logits: tuple[float]
+    logits: tuple[float] | None
 
 HF_KEY = os.environ.get("HF_KEY")
 
@@ -103,7 +103,8 @@ def generate_two_pronouns(
     
                         input_len = inputs.shape[1]
     
-                        decoded_output = mp.tokenizer.decode(output.sequences[0][input_len - 5:], skip_special_tokens=True)
+                        decoded_output = mp.tokenizer.decode(output.sequences[0][input_len - 5:],
+                                                             skip_special_tokens=True)
     
                         try:
                             json_output = ast.literal_eval(decoded_output)
@@ -139,7 +140,8 @@ def generate_two_pronouns(
                             except Exception as e:
                                 logger.error(f"Probability extraction failed: {e}")
 
-                            m = Measurement(index=idx, context=c, measurement=json_output, probabilities=probs)
+                            m = Measurement(index=idx, context=c, measurement=json_output, probabilities=probs,
+                                            logits=None)
                             measurements_idx.append(m)
                             with open(output_fpath, "a") as f:
                                 f.write(json.dumps(asdict(m))+"\n")
@@ -229,7 +231,7 @@ def generate_one_pronoun(
                                 # Model Logits
                                 model_logits = mp.get_raw_logits(prompt=prompt).cpu()
                                 pronoun_idxs = mp.get_token_ids(options=pronouns[1])
-                                pronoun_logits = model_logits[[sum(pronoun_idxs, [])]].numpy()
+                                pronoun_logits = model_logits[[sum(pronoun_idxs, [])]].tolist()
 
                                 inputs, output = mp.get_completion(prompt=prompt, temperature=temperature,
                                                                    max_new_tokens=12)
@@ -251,30 +253,9 @@ def generate_one_pronoun(
 
                                     probs = None
 
-                                    try:
-
-                                        first_token, first_logits, second_token, second_logits = mp.pronoun_logits(
-                                            pronouns_list=p_list,
-                                            generated_sequence=output.sequences[0][input_len:],
-                                            scores=output.scores
-                                        )
-
-                                        first_ids = mp.tokenizer(p1[1]).input_ids
-                                        second_ids = mp.tokenizer(p2[1]).input_ids
-
-                                        first_fem_pnoun_token = first_ids[-1]
-                                        second_fem_pnoun_token = second_ids[-1]
-
-                                        first_fem_prob = masked_softmax(first_fem_pnoun_token, first_logits[0])
-                                        second_fem_prob = masked_softmax(second_fem_pnoun_token, second_logits[0])
-
-                                        probs = (first_fem_prob.item(), second_fem_prob.item())
-
-                                    except Exception as e:
-                                        logger.error(f"Probability extraction failed: {e}")
-
                                     m = Measurement(index=idx, context=c, measurement=json_output, probabilities=probs,
                                                     logits=pronoun_logits)
+
                                     measurements_idx.append(m)
                                     with open(output_fpath, "a") as f:
                                         f.write(json.dumps(asdict(m)) + "\n")
