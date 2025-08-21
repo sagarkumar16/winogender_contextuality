@@ -87,7 +87,8 @@ class ModelProbs:
         :return: list of token id lists
         """
 
-        assert all([s[0] == " " for s in options]), "Tokens must begin with a space. "
+        #assert all([s[0] == " " for s in options]), "Tokens must begin with a space. "
+        # -- no longer true in JSON output format
 
         token_ids = [self.tokenizer.encode(opt, add_special_tokens=False) for opt in options]
 
