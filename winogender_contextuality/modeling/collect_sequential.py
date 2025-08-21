@@ -246,7 +246,7 @@ def generate_one_pronoun(
 
                                     c = Context(sent_order=s_perm,
                                                 pnoun_order=j,
-                                                sentence_1=s1,
+                                                sentence_1=first_sentence,
                                                 sentence_2=s2,
                                                 pronouns_1=p1,
                                                 pronouns_2=p2)
