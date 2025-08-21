@@ -227,9 +227,9 @@ def generate_one_pronoun(
                                                                     fixed_sentence=first_sentence))
 
                                 # Model Logits
-                                model_logits = mp.get_raw_logits(prompt=prompt)
+                                model_logits = mp.get_raw_logits(prompt=prompt).cpu()
                                 pronoun_idxs = mp.get_token_ids(options=pronouns[1])
-                                pronoun_logits = model_logits[pronoun_idxs].cpu().numpy()
+                                pronoun_logits = model_logits[pronoun_idxs].numpy()
 
                                 inputs, output = mp.get_completion(prompt=prompt, temperature=temperature,
                                                                    max_new_tokens=12)
