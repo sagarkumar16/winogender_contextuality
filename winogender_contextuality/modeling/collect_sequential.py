@@ -256,7 +256,7 @@ def generate_one_pronoun(
                                                f"Error count {error_count}/{n}")
                             c = Context(sent_order=s_perm,
                                         pnoun_order=(first_pronoun, j),
-                                        sentence_1=first_sentence,
+                                        sentence_1=first_sentence_filled,
                                         sentence_2=s2,
                                         pronouns_1=p1,
                                         pronouns_2=p2)
