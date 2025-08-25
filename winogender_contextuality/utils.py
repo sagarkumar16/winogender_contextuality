@@ -4,6 +4,11 @@ import typer
 import torch.nn.functional as F
 import ast
 import json
+from collections import defaultdict, Counter
+import numpy as np
+from scipy.special import softmax
+from scipy.spatial import distance
+from winogender_contextuality.modeling.contextuality import Measurement
 
 app = typer.Typer()
 
@@ -62,4 +67,118 @@ def load_ndjson(data_path) -> list[dict]:
                 data.append(json.loads(line))
 
     return data
+
+
+# First we get a partition
+def get_index(index: int,
+              data: list[Measurement] | list[dict]) -> list[Measurement] | list[dict]:
+    """
+    Filters list of Measurements (or equivalent dictionaries) by index.
+
+    :param index: index of measurement to return
+    :param data: list of Measurements
+    :return: list of Measurements
+    """
+
+    return [d for d in data if d['index'] == index]
+
+
+def get_sent_order(order: list[int],
+                   data: list[Measurement] | list[dict]) -> list[Measurement] | list[dict]:
+    """
+    Filters list of Measurements (or equivalent dictionaries) by sentence order
+
+    :param order: sentence order as a list (e.g. [0,1] for forward and [0,1] for backwards)
+    :param data: list of Measurements
+    :return: list of Measurements
+    """
+
+    return [d for d in data if d['context']['sent_order'] == order]
+
+
+def get_single_sentences(data: list[Measurement] | list[dict]) -> list[Measurement] | list[dict]:
+
+    """
+    Filters list of Measurements (or equivalent dictionaries) to get instances with no first sentence.
+
+    :param data: list of Measurements
+    :return: list of Measurements
+    """
+
+    return [d for d in data if d['context']['sentence_1'] == None]
+
+
+def get_filled_pnoun(pnoun_index: str,
+                     data: list[Measurement] | list[dict]) -> list[Measurement] | list[dict]:
+    """
+    Filters list of Measurements (or equivalent dictionaries) to get instances where first sentence is filled with the
+    designated pronoun.
+
+    :param pnoun: pronoun as a string with no spaces
+    :param data: list of Measurements
+    :return: list of Measurements.
+    """
+
+    return [d for d in data if d['context']['pnoun_order'][0] == d['context']['pronouns_1'][pnoun_index]]
+
+
+def get_pnoun_order(pnoun_order_index: int,
+                    data: list[Measurement] | list[dict]) -> list[Measurement] | list[dict]:
+    """
+    Filters list of Measurements (or equivalent dictionaries) to get instances where pronouns are presented in
+    the order designated by pronoun_order_index (i.e. 0 = male pronoun first)
+    """
+
+    return [d for d in data if d['context']['pnoun_order'][1] == pnoun_order_index]
+
+
+def get_internal_probs(measurements: list[Measurement] | list[dict]) -> np.ndarray:
+    """
+    Calculates probabilities based on mean logits from a list of Measurements (or equivalent dictionaries).
+
+    :param measurements: list of Measurement objects (or equivalant dictionaries)
+    :return: array of probabilities
+    """
+
+    # calculate probs from mean logits (should be all the same, though)
+    internal_probs = softmax(np.mean([np.array(l['logits']) for l in measurements], axis=0))
+
+    return internal_probs
+
+
+def get_generation_probs(measurements: list[Measurement] | list[dict]) -> np.ndarray:
+    """
+    Calculates probabilities based on empirical generation frequencies from a list of
+     Measurements (or equivalent dictionaries).
+
+    :param measurements: list of Measurement objects (or equivelant dictionaries)
+    :return: array of probabilities
+    """
+    # pronoun set is determined by the first measurement
+    pnouns = measurements[0]['context']['pronouns_2']
+
+    # calculate empirical generation probabilities (remove anything not in the list of pronouns)
+    generation_counter = Counter([l['measurement']['BLANK'] for l in measurements])
+    generation_counter_clean = {k: generation_counter[k] for k in pnouns}
+    num_valid_measurements = np.sum(list(generation_counter_clean.values()))
+    generation_probs = np.array(list(generation_counter_clean.values())) / num_valid_measurements
+
+    return generation_probs
+
+
+def get_generation_logit_distortion(measurements: list[Measurement] | list[dict]):
+    """
+    Measure of the difference between the (deterministic) internal beliefs of a model and the (observed) generation
+    frequency of those same tokens.
+
+    Distance is measured as L1 (Manhattan) Distance because this a discrete, unordered distribution.
+
+    :param measurements: list of Measurement objects (or equivelant dictionaries)
+    """
+
+    internal_probs = get_internal_probs(measurements)
+    generation_probs = get_generation_probs(measurements)
+
+    # L1 distance of the two arrays
+    return distance.cityblock(internal_probs, generation_probs)
     

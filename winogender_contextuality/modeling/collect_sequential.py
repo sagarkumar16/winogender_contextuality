@@ -213,6 +213,8 @@ def generate_one_pronoun(
             p1 = pronouns[s_perm[0]]
             p2 = pronouns[s_perm[1]]
 
+            # need to get rid of the print command here in the Storyteller version
+
             first_sentences = [None, s1]
 
             for j, p2_perm in enumerate(permutations(p2)):
@@ -221,16 +223,16 @@ def generate_one_pronoun(
                     for pnoun in p1:
                         if first_sentence is not None:
                             first_pronoun = pnoun
-                            first_sentence = first_sentence.replace('BLANK', first_pronoun)
+                            first_sentence_filled = first_sentence.replace('BLANK', first_pronoun)
                         else:
                             first_pronoun = None
-                            first_sentence = None
+                            first_sentence_filled = None
 
                         for n in tqdm(range(n_runs)):
                             p_list = list(p2_perm)
                             prompt = role_content_base(*no_game_seq_logit_prompt(option_set=p_list,
                                                                 free_sentence=s2,
-                                                                fixed_sentence=first_sentence))
+                                                                fixed_sentence=first_sentence_filled))
 
                             # Model Logits
                             model_logits = mp.get_raw_logits(prompt=prompt).cpu()
@@ -240,7 +242,6 @@ def generate_one_pronoun(
                             inputs, output = mp.get_completion(prompt=prompt, temperature=temperature,
                                                                max_new_tokens=12)
 
-                            # Generation Logits
                             input_len = inputs.shape[1]
                             decoded_output = mp.tokenizer.decode(output.sequences[0][input_len - 5:],
                                                                  skip_special_tokens=True)
@@ -248,26 +249,27 @@ def generate_one_pronoun(
                             try:
                                 json_output = ast.literal_eval(decoded_output)
 
-                                c = Context(sent_order=s_perm,
-                                            pnoun_order=(first_pronoun,j),
-                                            sentence_1=first_sentence,
-                                            sentence_2=s2,
-                                            pronouns_1=p1,
-                                            pronouns_2=p2)
-
-                                probs = None
-
-                                m = Measurement(index=idx, context=c, measurement=json_output, probabilities=probs,
-                                                logits=pronoun_logits)
-
-                                measurements_idx.append(m)
-                                with open(output_fpath, "a") as f:
-                                    f.write(json.dumps(asdict(m)) + "\n")
-
                             except Exception as e:
                                 error_count += 1
+                                json_output = {'BLANK': 'None'}
                                 logger.warning(f"Error {e} for output: {decoded_output}. "
                                                f"Error count {error_count}/{n}")
+                            c = Context(sent_order=s_perm,
+                                        pnoun_order=(first_pronoun, j),
+                                        sentence_1=first_sentence,
+                                        sentence_2=s2,
+                                        pronouns_1=p1,
+                                        pronouns_2=p2)
+
+                            probs = None
+                            m = Measurement(index=idx, context=c, measurement=json_output, probabilities=probs,
+                                            logits=pronoun_logits)
+
+                            measurements_idx.append(m)
+
+                            ## cant just skip it now
+                            with open(output_fpath, "a") as f:
+                                f.write(json.dumps(asdict(m)) + "\n")
 
                 logger.warning(f"{error_count}/{n_runs} not captured.")
         logger.info(f"Successfully collected {idx}. "
