@@ -9,8 +9,26 @@ import numpy as np
 from scipy.special import softmax
 from scipy.spatial import distance
 from winogender_contextuality.modeling.contextuality import Measurement
+from dataclasses import dataclass, asdict
 
 app = typer.Typer()
+
+@dataclass
+class Context:
+    sent_order: tuple[int, int] # denotes the order of the sentences (e.g. (1, 0) => the order was reversed)
+    pnoun_order: tuple[int, int] # denotes the order of the pronouns (e.g. (0, 1) => second set of pronouns was reversed)
+    sentence_1: str
+    sentence_2: str
+    pronouns_1: list[str]
+    pronouns_2: list[str]
+
+@dataclass
+class Measurement:
+    index: int
+    context: Context
+    measurement: dict[str, str]
+    probabilities: tuple[float] | None
+    logits: tuple[float] | None
 
 @app.command()
 def flush():

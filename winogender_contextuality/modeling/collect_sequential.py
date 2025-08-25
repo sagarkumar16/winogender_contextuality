@@ -5,7 +5,6 @@ import pandas as pd
 import ast
 import typer
 from datetime import datetime
-from dataclasses import dataclass, asdict
 from itertools import permutations
 from winogender_contextuality.modeling.prompting import *
 from winogender_contextuality.modeling.ModelProbs import *
@@ -13,23 +12,6 @@ from winogender_contextuality.config import *
 from winogender_contextuality.utils import *
 
 app = typer.Typer()
-
-@dataclass
-class Context:
-    sent_order: tuple[int, int] # denotes the order of the sentences (e.g. (1, 0) => the order was reversed)
-    pnoun_order: tuple[int, int] # denotes the order of the pronouns (e.g. (0, 1) => second set of pronouns was reversed)
-    sentence_1: str
-    sentence_2: str
-    pronouns_1: list[str]
-    pronouns_2: list[str]
-
-@dataclass
-class Measurement:
-    index: int 
-    context: Context
-    measurement: dict[str, str]
-    probabilities: tuple[float] | None
-    logits: tuple[float] | None
 
 HF_KEY = os.environ.get("HF_KEY")
 
