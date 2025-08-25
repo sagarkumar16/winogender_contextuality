@@ -8,7 +8,6 @@ from collections import defaultdict, Counter
 import numpy as np
 from scipy.special import softmax
 from scipy.spatial import distance
-from winogender_contextuality.modeling.contextuality import Measurement
 from dataclasses import dataclass, asdict
 
 app = typer.Typer()
