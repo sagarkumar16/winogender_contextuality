@@ -271,7 +271,7 @@ def generate_one_pronoun(
                             with open(output_fpath, "a") as f:
                                 f.write(json.dumps(asdict(m)) + "\n")
 
-                logger.warning(f"{error_count}/{n_runs} not captured.")
+                            logger.warning(f"{error_count}/{n_runs} not captured.")
         logger.info(f"Successfully collected {idx}. "
                     f"Writing {len(measurements_idx)} measurements to {output_fpath}.")
 
