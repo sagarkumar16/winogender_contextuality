@@ -46,7 +46,7 @@ def measure_contextualities(
 
     data = load_ndjson(INPUT_PATH)
 
-    last_index = data[-1]['index']
+    last_index = max([d['index'] for d in data])
     pbar = tqdm(range(last_index))
 
     sentence_cbd = {'mfmf': [], 'mffm': [], 'fmmf': [], 'fmfm': []}
