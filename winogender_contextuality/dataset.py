@@ -47,9 +47,9 @@ def main(
                 logger.warning(f"Could not find a pronoun in {s}")
 
             if df.answer[idx]:
-                new_row[f"referent_{idx+1}"] = df['other-participant(1)'][idx]
+                new_row[f"referent_{idx+1}"] = chunk['other-participant(1)'][idx]
             else:
-                new_row[f"referent_{idx+1}"] = df['occupation(0)'][idx]
+                new_row[f"referent_{idx+1}"] = chunk['occupation(0)'][idx]
 
         new_rows.append(new_row)
 
