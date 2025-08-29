@@ -154,7 +154,7 @@ def game_prompt(options: list,
 
     USER_PROMPT = "Answer saying which action Player 1 should play."
 
-    ASSISTANT_PROMPT = "Player 1 should play"
+    ASSISTANT_PROMPT = "Player 1 should play {BLANK:"
 
     return SYSTEM_PROMPT, USER_PROMPT, ASSISTANT_PROMPT
 
