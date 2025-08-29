@@ -9,6 +9,7 @@ import numpy as np
 from scipy.special import softmax
 from scipy.spatial import distance
 from dataclasses import dataclass, asdict
+from loguru import logger
 
 app = typer.Typer()
 
@@ -175,7 +176,13 @@ def get_generation_probs(measurements: list[Measurement] | list[dict]) -> np.nda
     pnouns = measurements[0]['context']['pronouns_2']
 
     # calculate empirical generation probabilities (remove anything not in the list of pronouns)
-    generation_counter = Counter([l['measurement']['BLANK'] for l in measurements])
+    generated_pnouns = []
+    for m in measurements:
+        try:
+            generated_pnouns.append(m['measurement']['BLANK'])
+        except Exception as e:
+            logger.debug(f"Exception {e} raised for item {m}")
+    generation_counter = Counter(generated_pnouns)
     generation_counter_clean = {k: generation_counter[k] for k in pnouns}
     num_valid_measurements = np.sum(list(generation_counter_clean.values()))
     generation_probs = np.array(list(generation_counter_clean.values())) / num_valid_measurements
