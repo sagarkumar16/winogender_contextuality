@@ -1,3 +1,6 @@
+
+# NOTE THAT A SINGLE QUOTATION IS ADDED AT THE BLANKS
+
 def no_game_prompt(options: list,
                    sentence: str):
 
@@ -50,7 +53,7 @@ def no_game_seq_prompt(option_sets: list[list[str]],
                    "Respond only in the following format {'BLANK1': '<text>', 'BLANK2': '<text>'}"
                    )
 
-    ASSISTANT_PROMPT = "{'BLANK1':"
+    ASSISTANT_PROMPT = "{'BLANK1':'"
 
     return SYSTEM_PROMPT, USER_PROMPT, ASSISTANT_PROMPT
 
@@ -116,7 +119,7 @@ def no_game_seq_logit_prompt(option_set: list[str],
                    f"Replace BLANK with one of the options: {option_set}. "
                    "Respond only in the following format {'BLANK': '<text>'}")
 
-    ASSISTANT_PROMPT = "{'BLANK':"
+    ASSISTANT_PROMPT = "{'BLANK':'"
 
     return SYSTEM_PROMPT, USER_PROMPT, ASSISTANT_PROMPT
 
@@ -154,7 +157,7 @@ def game_prompt(options: list,
 
     USER_PROMPT = "Answer saying which action Player 1 should play."
 
-    ASSISTANT_PROMPT = "Player 1 should play {BLANK:"
+    ASSISTANT_PROMPT = "Player 1 should play {BLANK:'"
 
     return SYSTEM_PROMPT, USER_PROMPT, ASSISTANT_PROMPT
 
