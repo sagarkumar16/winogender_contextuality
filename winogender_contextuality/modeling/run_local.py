@@ -1,7 +1,7 @@
 import torch
 from torch import bfloat16
-from transformers import AutoModelForCausalLM, BitsAndBytesConfig, PreTrainedModel, AutoTokenizer, AutoConfig
-from transformers.quantizers import Mxfp4Config
+from transformers import (AutoModelForCausalLM, BitsAndBytesConfig, PreTrainedModel, AutoTokenizer, AutoConfig,
+                          Mxfp4Config)
 import huggingface_hub
 from winogender_contextuality.config import *
 
