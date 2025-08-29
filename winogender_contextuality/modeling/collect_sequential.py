@@ -15,12 +15,13 @@ app = typer.Typer()
 
 HF_KEY = os.environ.get("HF_KEY")
 
+# TODO: Batching currently not available for two pronoun generation
 @app.command()
 def generate_two_pronouns(
         mode: str,
         model_name: str,
         temperature: float,
-        n_runs: int = 1000,
+        n_runs: int = 100,
         quantized: bool = True,
         input_fpath: pathlib.Path = INTERIM_DATA_DIR / "wino_pairs.tsv",
         output_dir: pathlib.Path = INTERIM_DATA_DIR
