@@ -5,6 +5,7 @@ from itertools import product
 from loguru import logger
 from winogender_contextuality.utils import Measurement
 from collections import Counter
+from scipy.special import softmax
 
 """
 Assesses contextuality by calling a ModelProbs class to (1) determine if a joint space can be constructed
@@ -401,6 +402,97 @@ def calculate_sentence_nc_fraction(data_dict: dict) -> float:
     )
 
     return delta_c
+
+def calculate_sentence_dc_fraction_internal(data_dict: dict,
+                                            mode: str) -> float:
+    """
+    Calculates degree of contextuality based on the output from sentence_order_results()
+
+    :param data_dict: output of sentence_order_results()
+    :param mode: 'internal' or 'generation'
+    :return: degree of contextuality
+    """
+
+    if mode == 'internal':
+        C1_size = len(data_dict['forward']['fixed_pnoun'])
+        C2_size = len(data_dict['reverse']['fixed_pnoun'])
+
+        V1_dict = Counter(data_dict['forward']['fixed_pnoun'])
+        W2 = softmax(np.mean(data_dict['forward']['free_pnoun'], axis=0))
+        W1 = softmax(np.mean(data_dict['reverse']['free_pnoun'], axis=0))
+        V2_dict = Counter(data_dict['reverse']['fixed_pnoun'])
+
+        try:
+            target_f = data_dict['forward']['pronouns']
+            target_r = data_dict['reverse']['pronouns']
+
+            V1 = V1_dict.get(target_f[0], 0) / C1_size
+            W2 = W2[1]
+            W1 = W1[1]
+            V2 = V2_dict.get(target_r[1], 0) / C2_size
+
+        except Exception as e:
+            logger.error(f"Error calculating degree of contextuality: {e}")
+
+        # Compute joint probabilities
+        ## p(x,y) = p(y|x)p(x)
+        forward_trials = zip(data_dict['forward']['fixed_pnoun'], data_dict['forward']['free_pnoun'])
+        count_c1 = sum(1 for x, y in forward_trials if x == target_f[0] and y == target_f[1])
+        V1W2 = count_c1 / C1_size
+
+        reverse_trials = zip(data_dict['reverse']['fixed_pnoun'], data_dict['reverse']['free_pnoun'])
+        count_c2 = sum(1 for x, y in reverse_trials if x == target_r[0] and y == target_r[1])
+        V2W1 = count_c2 / C2_size
+
+        delta_c = (
+                abs(cbd_correlation(V1, V2, V1W2) - cbd_correlation(V2, W1, V2W1))
+                - (abs(cbd_expectation(V1) - cbd_expectation(W1))
+                   + abs(cbd_expectation(V2) - cbd_expectation(W2)))
+        )
+
+        return delta_c
+
+    elif mode == 'generation':
+        C1_size = len(data_dict['forward']['fixed_pnoun'])
+        C2_size = len(data_dict['reverse']['fixed_pnoun'])
+
+        V1_dict = Counter(data_dict['forward']['fixed_pnoun'])
+        W2_dict = Counter(data_dict['forward']['free_pnoun'])
+        W1_dict = Counter(data_dict['reverse']['free_pnoun'])
+        V2_dict = Counter(data_dict['reverse']['fixed_pnoun'])
+
+        try:
+            target_f = data_dict['forward']['pronouns']
+            target_r = data_dict['reverse']['pronouns']
+
+            V1 = V1_dict.get(target_f[0], 0) / C1_size
+            W2 = W2_dict.get(target_f[1], 0) / C1_size
+            W1 = W1_dict.get(target_r[0], 0) / C2_size
+            V2 = V2_dict.get(target_r[1], 0) / C2_size
+
+        except Exception as e:
+            logger.error(f"Error calculating degree of contextuality: {e}")
+
+        # Compute joint probabilities
+        ## p(x,y) = p(y|x)p(x)
+        forward_trials = zip(data_dict['forward']['fixed_pnoun'], data_dict['forward']['free_pnoun'])
+        count_c1 = sum(1 for x, y in forward_trials if x == target_f[0] and y == target_f[1])
+        V1W2 = count_c1 / C1_size
+
+        reverse_trials = zip(data_dict['reverse']['fixed_pnoun'], data_dict['reverse']['free_pnoun'])
+        count_c2 = sum(1 for x, y in reverse_trials if x == target_r[0] and y == target_r[1])
+        V2W1 = count_c2 / C2_size
+
+        delta_c = (
+                abs(cbd_correlation(V1, V2, V1W2) - cbd_correlation(V2, W1, V2W1))
+                - (abs(cbd_expectation(V1) - cbd_expectation(W1))
+                   + abs(cbd_expectation(V2) - cbd_expectation(W2)))
+        )
+
+        return delta_c
+
+    else:
+        raise AttributeError
 
 
 

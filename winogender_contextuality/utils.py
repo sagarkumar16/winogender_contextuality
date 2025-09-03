@@ -1,7 +1,7 @@
 import gc
 import torch
 import typer
-import torch.nn.functional as F
+from scipy.special import softmax
 import ast
 import json
 from collections import defaultdict, Counter
@@ -48,7 +48,7 @@ def masked_softmax(token_ids: list[int],
     """
 
     z = logits[token_ids]
-    probs = F.softmax(z, dim=0)
+    probs = softmax(z, dim=0)
 
     return probs
 
@@ -205,4 +205,139 @@ def get_generation_logit_distortion(measurements: list[Measurement] | list[dict]
 
     # L1 distance of the two arrays
     return distance.cityblock(internal_probs, generation_probs)
-    
+
+
+def get_sentence_pnoun_order(idx: int,
+                             model_measurements: list[dict],
+                             mode: str,
+                             pnoun_order: int,  # 0 for [m, f], 1 for [f, m]
+                             default_pronoun: int = 1  # 0 for male, 1 for female
+                             ) -> dict:
+    """
+    Creates a dictionary given a subset of measurements for a single pair of sentences which summarizes the results of
+    all runs, separated on the basis of sentence order, filtered for only one pronoun order.
+
+    :param idx: integer index sentence pair
+    :param model_measurements: list of Measurement objects (or equivalently structured dictionaries)
+    :param mode: either 'internal' or 'generation'
+    :param pnoun_order: filtered pronoun order--NOTE: this uses default_pronoun indexing
+    :param default_pronoun: pronoun index for probabiity calculations (default = 1 for female)
+    :return:
+    """
+    sentence_measurements = [d for d in model_measurements if d['index'] == idx]
+    test_measurements = [d for d in sentence_measurements if (d['context']['pnoun_order'][1] == pnoun_order) and
+                         (d['context']['pnoun_order'][0] is not None)]
+
+    data_dict = {'forward': {'fixed_pnoun': [], 'free_pnoun': [], 'pronouns': []},
+                 'reverse': {'fixed_pnoun': [], 'free_pnoun': [], 'pronouns': []}}
+
+    if mode == 'internal':
+        for d in test_measurements:
+
+            context = d['context']['sent_order']
+
+            if context == [0, 1]:
+                dict_key = 'forward'
+                fixed_pnoun = d['context']['pnoun_order'][0]
+                free_pnoun = d['logits']
+                default_p1 = d['context']['pronouns_1'][default_pronoun]
+                default_p2 = d['context']['pronouns_2'][default_pronoun]
+            elif context == [1, 0]:
+                dict_key = 'reverse'
+                fixed_pnoun = d['context']['pnoun_order'][0]
+                free_pnoun = d['logits']
+                default_p1 = d['context']['pronouns_2'][default_pronoun]
+                default_p2 = d['context']['pronouns_1'][default_pronoun]
+            else:
+                raise AttributeError
+
+            data_dict[dict_key]['fixed_pnoun'].append(fixed_pnoun.lower())
+            data_dict[dict_key]['free_pnoun'].append(free_pnoun)
+            data_dict[dict_key]['pronouns'] = [default_p1, default_p2]
+
+        return data_dict
+
+    elif mode == 'generation':
+        for d in test_measurements:
+
+            context = d['context']['sent_order']
+
+            if context == [0, 1]:
+                dict_key = 'forward'
+                fixed_pnoun = d['context']['pnoun_order'][0]
+                free_pnoun = d['measurement']['BLANK']
+                default_p1 = d['context']['pronouns_1'][default_pronoun]
+                default_p2 = d['context']['pronouns_2'][default_pronoun]
+            elif context == [1, 0]:
+                dict_key = 'reverse'
+                fixed_pnoun = d['context']['pnoun_order'][0]
+                free_pnoun = d['measurement']['BLANK']
+                default_p1 = d['context']['pronouns_2'][default_pronoun]
+                default_p2 = d['context']['pronouns_1'][default_pronoun]
+            else:
+                raise AttributeError
+
+            data_dict[dict_key]['fixed_pnoun'].append(fixed_pnoun.lower())
+            data_dict[dict_key]['free_pnoun'].append(free_pnoun.lower())
+            data_dict[dict_key]['pronouns'] = [default_p1, default_p2]
+
+        return data_dict
+
+    else:
+        raise AttributeError
+
+
+
+# Sentence-order contextuality via CBD
+def sentence_order_results_single_gen(idx: int,
+                                      model_measurements: list[dict],
+                                      pnoun_order: list[int] = [0, 0],
+                                      default_pronoun: int = 1  # 0 for male, 1 for female
+                                      ) -> dict:
+    """
+    Creates a dictionary given a subset of measurements for a single pair of sentences which summarizes the results of
+    all runs, separated on the basis of sentence order, filtered for only one pronoun order.
+
+    :param idx: integer index sentence pair
+    :param model_measurements: list of Measurement objects (or equivalently structured dictionaries)
+    :param pnoun_order: filtered pronoun order--NOTE: this uses default_pronoun indexing
+    :param default_pronoun: pronoun index for probabiity calculations (default = 1 for female)
+    :return:
+    """
+    sentence_measurements = [d for d in model_measurements if d['index'] == idx]
+
+    pnoun_filled_fwd = [sentence_measurements[0]['context']['pronouns_1'][pnoun_order[0]], pnoun_order[1]]
+    pnoun_filled_bwd = [sentence_measurements[0]['context']['pronouns_2'][pnoun_order[0]], pnoun_order[1]]
+
+    test_measurements = [d for d in sentence_measurements if d['context']['pnoun_order'] == pnoun_filled_fwd or
+                         d['context']['pnoun_order'] == pnoun_filled_bwd]
+
+    data_dict = {'forward': {'fixed_pnoun': [], 'free_pnoun': [], 'pronouns': []},
+                 'reverse': {'fixed_pnoun': [], 'free_pnoun': [], 'pronouns': []}}
+
+    for d in test_measurements:
+
+        context = d['context']['sent_order']
+
+        if context == [0, 1]:
+            dict_key = 'forward'
+            fixed_pnoun = d['context']['pnoun_order'][0]
+            free_pnoun = d['measurement']['BLANK']
+            default_p1 = d['context']['pronouns_1'][default_pronoun]
+            default_p2 = d['context']['pronouns_2'][default_pronoun]
+        elif context == [1, 0]:
+            dict_key = 'reverse'
+            fixed_pnoun = d['context']['pnoun_order'][0]
+            free_pnoun = d['measurement']['BLANK']
+            default_p1 = d['context']['pronouns_2'][default_pronoun]
+            default_p2 = d['context']['pronouns_1'][default_pronoun]
+        else:
+            raise AttributeError
+
+        data_dict[dict_key]['fixed_pnoun'].append(fixed_pnoun.lower())
+        data_dict[dict_key]['free_pnoun'].append(free_pnoun.lower())
+        data_dict[dict_key]['pronouns'] = [default_p1, default_p2]
+
+    return data_dict
+
+
