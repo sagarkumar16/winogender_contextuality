@@ -10,6 +10,8 @@ from scipy.special import softmax
 from scipy.spatial import distance
 from dataclasses import dataclass, asdict
 from loguru import logger
+import pandas as pd
+from winogender_contextuality.config import *
 
 app = typer.Typer()
 
@@ -86,6 +88,43 @@ def load_ndjson(data_path) -> list[dict]:
 
     return data
 
+def get_role_dict(
+        templates_path: str = RAW_DATA_DIR / "templates.tsv",
+        pairs_path: str = RAW_DATA_DIR / "pairs.tsv") -> dict:
+
+    """
+    Creates a dictionary with role (i.e. occupation or roles like "customer") for the referent in the blank setence
+    and priming sentence.
+
+    :param templates_path: path to templates file
+    :param pairs_path: path to pairs file
+    :return: dict with shape {idx: {'forward': (referent occupation, priming occupation),
+         'reverse': (referent occupation, priming occupation)}
+    """
+
+    templates = pd.read_csv(templates_path, sep='\t')
+    pairs = pd.read_csv(pairs_path, sep='\t')
+    max_index = max(pairs.index)
+
+    pnoun_role_dict = defaultdict(dict)
+    for idx in range(max_index):
+        forward_sentence_idx = int((2 * idx) + 1)
+        reverse_sentence_idx = int(2 * idx)
+
+        answer_mapping = {0: 'occupation(0)', 1: 'other-participant(1)'}
+
+        forward_ref_col = answer_mapping[templates['answer'][forward_sentence_idx]]
+        forward_other_col = answer_mapping[(templates['answer'][forward_sentence_idx] + 1) % 2]
+        reverse_ref_col = answer_mapping[templates['answer'][reverse_sentence_idx]]
+        reverse_other_col = answer_mapping[(templates['answer'][reverse_sentence_idx] + 1) % 2]
+
+        pnoun_role_dict[idx]['forward'] = (templates[forward_ref_col][forward_sentence_idx],
+                                           templates[forward_other_col][forward_sentence_idx])
+        pnoun_role_dict[idx]['reverse'] = (templates[reverse_ref_col][reverse_sentence_idx],
+                                           templates[reverse_other_col][reverse_sentence_idx])
+
+    return pnoun_role_dict
+
 
 # First we get a partition
 def get_index(index: int,
@@ -126,13 +165,13 @@ def get_single_sentences(data: list[Measurement] | list[dict]) -> list[Measureme
     return [d for d in data if d['context']['sentence_1'] == None]
 
 
-def get_filled_pnoun(pnoun_index: str,
+def get_filled_pnoun(pnoun_index: int,
                      data: list[Measurement] | list[dict]) -> list[Measurement] | list[dict]:
     """
     Filters list of Measurements (or equivalent dictionaries) to get instances where first sentence is filled with the
     designated pronoun.
 
-    :param pnoun: pronoun as a string with no spaces
+    :param pnoun_index: pronoun as a string with no spaces
     :param data: list of Measurements
     :return: list of Measurements.
     """
