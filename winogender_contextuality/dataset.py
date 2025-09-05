@@ -28,6 +28,7 @@ nb_pronouns_dict = {
 def main(
     input_path: Path = RAW_DATA_DIR / "templates.tsv",
     output_path: Path = INTERIM_DATA_DIR / "wino_pairs.tsv",
+    sentence_col: str = "sentence",
     nb: bool = False
 ) -> None:
     """
@@ -35,6 +36,7 @@ def main(
     scripts
     :param input_path: input filename
     :param output_path: output filename
+    :param sentence_col: column name of sentences
     :param nb: whether to use nonbinary pronouns
     :return: None
     """
@@ -54,7 +56,7 @@ def main(
         new_row = {}
 
         for idx in chunk.index:
-            s = chunk.sentence[idx]
+            s = chunk[sentence_col][idx]
             s = s.replace('$OCCUPATION', f"{chunk['occupation(0)'][idx]}")
             s = s.replace('$PARTICIPANT', f"{chunk['other-participant(1)'][idx]}")
             match = re.search(r'\$[a-zA-Z_]\w*', s)
