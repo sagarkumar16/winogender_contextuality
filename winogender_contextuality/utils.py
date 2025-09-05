@@ -128,16 +128,25 @@ def get_role_dict(
 
 # First we get a partition
 def get_index(index: int,
-              data: list[Measurement] | list[dict]) -> list[Measurement] | list[dict]:
+              data: list[Measurement] | list[dict],
+              filter_none: bool= True) -> list[Measurement] | list[dict]:
     """
     Filters list of Measurements (or equivalent dictionaries) by index.
 
     :param index: index of measurement to return
     :param data: list of Measurements
+    :param filter_none: whether to filter out instances with erroneous responses
     :return: list of Measurements
     """
 
-    return [d for d in data if d['index'] == index]
+    all_measurements = [d for d in data if d['index'] == index]
+
+    if filter_none:
+        string_only = [d for d in all_measurements if isinstance(d['measurement'], str)]
+        no_none = [d for d in string_only if d['measurement'] != "None"]
+        return no_none
+    else:
+        return all_measurements
 
 
 def get_sent_order(order: list[int],
