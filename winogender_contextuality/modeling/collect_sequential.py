@@ -147,13 +147,13 @@ def generate_one_pronoun(
         mode: str,
         model_name: str,
         temperature: float,
-        dataset: str,
         n_runs: int = 1000,
         quantized: bool = True,
         input_dir: pathlib.Path = INTERIM_DATA_DIR ,
         output_dir: pathlib.Path = INTERIM_DATA_DIR,
         start: int = 0,
         end: int | None = None,                 # inclusive
+        input_file: str = "wino_pairs.tsv",
         output_file: pathlib.Path | None = None # single, shared output file
 ):
     """
@@ -162,22 +162,19 @@ def generate_one_pronoun(
     :param mode:
     :param model_name:
     :param temperature:
-    :param dataset:
     :param n_runs:
     :param quantized:
-    :param input_fpath:
+    :param input_dir:
     :param output_dir: ndjson file
     :param start: 0-based start index (inclusive)
     :param end: end index (inclusive); if None, processes through last row
+    :param input_file: filename from input_dir
     :param output_file: explicit NDJSON file path shared by all batches
     """
 
     logger.add(LOG_DIR / f"data_collection_{datetime.now()}.log")
 
-    if dataset=='winogender':
-        input_fpath = input_dir / "wino_pairs.tsv"
-    elif dataset=='winopron':
-        input_fpath = input_dir / "winopron_pairs.tsv"
+    input_fpath = input_dir / input_file
 
     # single shared output file
     if output_file is None:
