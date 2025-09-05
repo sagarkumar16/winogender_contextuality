@@ -11,6 +11,7 @@ from winogender_contextuality.modeling.ModelProbs import *
 from winogender_contextuality.config import *
 from winogender_contextuality.utils import *
 
+
 app = typer.Typer()
 
 HF_KEY = os.environ.get("HF_KEY")
@@ -146,13 +147,14 @@ def generate_one_pronoun(
         mode: str,
         model_name: str,
         temperature: float,
+        dataset: str,
         n_runs: int = 1000,
         quantized: bool = True,
-        input_fpath: pathlib.Path = INTERIM_DATA_DIR / "wino_pairs.tsv",
+        input_dir: pathlib.Path = INTERIM_DATA_DIR ,
         output_dir: pathlib.Path = INTERIM_DATA_DIR,
         start: int = 0,
         end: int | None = None,                 # inclusive
-        output_file: pathlib.Path | None = None # NEW: single, shared output file
+        output_file: pathlib.Path | None = None # single, shared output file
 ):
     """
     Collect single-pronoun logits and completions over a slice of the dataset.
@@ -160,6 +162,7 @@ def generate_one_pronoun(
     :param mode:
     :param model_name:
     :param temperature:
+    :param dataset:
     :param n_runs:
     :param quantized:
     :param input_fpath:
@@ -171,9 +174,16 @@ def generate_one_pronoun(
 
     logger.add(LOG_DIR / f"data_collection_{datetime.now()}.log")
 
+    if dataset=='winogender':
+        input_fpath = input_dir / "wino_pairs.tsv"
+    elif dataset=='winopron':
+        input_fpath = input_dir / "winopron_pairs.tsv"
+
     # single shared output file
     if output_file is None:
-        output_fpath = output_dir / f"one_pronoun_measurements_{model_name.split('/')[-1]}_{temperature}.ndjson"
+        fname_model = model_name.split('/')[-1]
+        dt = datetime.now().strftime('%H%M%d%m%y')
+        output_fpath = output_dir / f"one_pronoun_measurements_{fname_model}_{temperature}_{dt}.ndjson"
     else:
         output_fpath = output_file
     output_fpath.parent.mkdir(parents=True, exist_ok=True)
