@@ -3,7 +3,7 @@ import xarray as xr
 from scipy.optimize import linprog, OptimizeResult
 from itertools import product
 from loguru import logger
-from winogender_contextuality.utils import Measurement
+from winogender_contextuality.utils import Measurement, get_index
 from collections import Counter
 from scipy.special import softmax
 
@@ -322,7 +322,7 @@ def calculate_pronouns_nc_fraction(
 # Sentence-order contextuality via CBD
 def sentence_order_results(idx: int,
                            model_measurements: list[Measurement],
-                           pnoun_order: list[int] = [0, 0],
+                           pnoun_order: list[int] = [0,0],
                            default_pronoun: int = 1  # 0 for male, 1 for female
                            ) -> dict:
     """
@@ -331,11 +331,11 @@ def sentence_order_results(idx: int,
 
     :param idx: integer index sentence pair
     :param model_measurements: list of Measurement objects (or equivalently structured dictionaries)
-    :param pnoun_order: filtered pronoun order
+    :param pnoun_order: filtered pronoun order index
     :param default_pronoun: pronoun index for probabiity calculations (default = 1 for female)
     :return:
     """
-    sentence_measurements = [d for d in model_measurements if d['index'] == idx]
+    sentence_measurements = get_index(idx, model_measurements)
     test_measurements = [d for d in sentence_measurements if d['context']['pnoun_order'] == pnoun_order]
 
     data_dict = {'forward': {'pnoun_1': [], 'pnoun_2': [], 'pronouns': []},
@@ -358,6 +358,60 @@ def sentence_order_results(idx: int,
 
         data_dict[dict_key]['pnoun_1'].append(pnoun_1.lower())
         data_dict[dict_key]['pnoun_2'].append(pnoun_2.lower())
+        data_dict[dict_key]['pronouns'] = [default_p1, default_p2]
+
+    return data_dict
+
+
+def sentence_order_single_results(idx: int,
+                                  model_measurements: list[dict],
+                                  pnoun_order: int,  # 0 for [m, f], 1 for [f, m]
+                                  default_pronoun: int = 1  # 0 for male, 1 for female
+                                  ) -> dict:
+    """
+    Creates a dictionary given a subset of measurements for a single pair of sentences which summarizes the results of
+    all runs, separated on the basis of sentence order, filtered for only one pronoun order.
+
+    :param idx: integer index sentence pair
+    :param model_measurements: list of Measurement objects (or equivalently structured dictionaries)
+    :param pnoun_order: filtered pronoun order--NOTE: this uses default_pronoun indexing
+    :param default_pronoun: pronoun index for probabiity calculations (default = 1 for female)
+    :return:
+    """
+    sentence_measurements = get_index(idx, model_measurements)
+    test_measurements = [d for d in sentence_measurements if (d['context']['pnoun_order'][1] == pnoun_order) and
+                         (d['context']['pnoun_order'][0] is not None)]
+
+    data_dict = {'forward': {'fixed_pnoun': [], 'free_pnoun': [], 'pronouns': []},
+                 'reverse': {'fixed_pnoun': [], 'free_pnoun': [], 'pronouns': []}}
+
+    for d in test_measurements:
+
+        context = d['context']['sent_order']
+
+        if context == [0, 1]:
+            dict_key = 'forward'
+            fixed_pnoun = d['context']['pnoun_order'][0]
+            try:
+                free_pnoun = d['measurement']['BLANK']
+            except TypeError:
+                continue
+            default_p1 = d['context']['pronouns_1'][default_pronoun]
+            default_p2 = d['context']['pronouns_2'][default_pronoun]
+        elif context == [1, 0]:
+            dict_key = 'reverse'
+            fixed_pnoun = d['context']['pnoun_order'][0]
+            try:
+                free_pnoun = d['measurement']['BLANK']
+            except TypeError:
+                continue
+            default_p1 = d['context']['pronouns_2'][default_pronoun]
+            default_p2 = d['context']['pronouns_1'][default_pronoun]
+        else:
+            raise AttributeError
+
+        data_dict[dict_key]['fixed_pnoun'].append(fixed_pnoun.lower())
+        data_dict[dict_key]['free_pnoun'].append(free_pnoun.lower())
         data_dict[dict_key]['pronouns'] = [default_p1, default_p2]
 
     return data_dict
