@@ -212,7 +212,7 @@ def get_internal_probs(measurements: list[Measurement] | list[dict]) -> np.ndarr
     return internal_probs
 
 
-def get_generation_probs(measurements: list[Measurement] | list[dict]) -> np.ndarray:
+def get_generation_probs(measurements: list[Measurement] | list[dict]) -> np.ndarray | None:
     """
     Calculates probabilities based on empirical generation frequencies from a list of
      Measurements (or equivalent dictionaries).
