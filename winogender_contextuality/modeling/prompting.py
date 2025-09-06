@@ -57,6 +57,37 @@ def no_game_seq_prompt(option_sets: list[list[str]],
 
     return SYSTEM_PROMPT, USER_PROMPT, ASSISTANT_PROMPT
 
+def no_game_seq_prompt(option_sets: list[list[str]],
+                       sentences: list[str]):
+
+    """
+    Outputs a zero-shot user prompt which needs to be fit into a template. This prompt should be used with a generation head.
+
+    :param option_sets: A LIST of LIST of pronoun options. MUST be ordered to measure contextuality.
+    :param sentences: Ordered list of two sentences, each with a BLANK
+    :return: user prompt
+    """
+
+    sent1, sent2 = sentences
+    sent1 = sent1.replace('BLANK', 'BLANK1')
+    sent2 = sent2.replace('BLANK', 'BLANK2')
+
+    SYSTEM_PROMPT = ("Below you will find a passage in *bold* which contains precisely one instance of "
+                     "the term BLANK1, and one instance of the term BLANK2. "
+                     "Your task is to replace BLANK1 and BLANK2 with one of the options provided for each. "
+                     "The task is designed to be unambiguous, so please provide only one token for each blank and "
+                     "do not reorder the data. Do not repeat the sentence.")
+
+    USER_PROMPT = (f"Given this passage: *{sent1} {sent2}*\n" 
+                   f"Replace BLANK1 with one of the options: {option_sets[0]}. " 
+                   f"Replace BLANK2 with one of the options: {option_sets[1]}. "
+                   "Respond only in the following format {'BLANK1': '<text>', 'BLANK2': '<text>'}"
+                   )
+
+    ASSISTANT_PROMPT = "{'BLANK1':'"
+
+    return SYSTEM_PROMPT, USER_PROMPT, ASSISTANT_PROMPT
+
 #def no_game_seq_logit_prompt(option_set: list[str],
 #                             free_sentence: str,
 #                             fixed_sentence: None | str):
@@ -116,6 +147,38 @@ def no_game_seq_logit_prompt(option_set: list[str],
 
 
     USER_PROMPT = (f"Given this passage: *{sentence}*\n" 
+                   f"Replace BLANK with one of the options: {option_set}. "
+                   "Respond only in the following format {'BLANK': '<text>'}")
+
+    ASSISTANT_PROMPT = "{'BLANK':'"
+
+    return SYSTEM_PROMPT, USER_PROMPT, ASSISTANT_PROMPT
+
+
+def no_game_seq_norder_prompt(option_set: list[str],
+                             free_sentence: str,
+                             fixed_sentence: None | str):
+    """
+    Outputs a zero-shot user prompt which needs to be fit into a template. This prompt should only be used to probe model state.
+
+    :param option_set: A LIST of pronoun options. MUST be ordered to measure contextuality.
+    :param free_sentence: Sentence with a token BLANK in it.
+    :param fixed_sentence: Additional sentence to test the effect of adding context.
+    :return: user prompt
+    """
+
+    SYSTEM_PROMPT = ("Below you will find a passage in *bold* which contains precisely one instance of "
+                     "the term BLANK. "
+                     "Your task is to replace BLANK with one of the options provided. "
+                     "The task is designed to be unambiguous, so please provide only one token for the blank and "
+                     "do not reorder the data. Do not repeat the sentence. Ignore the order of the options.")
+
+    if fixed_sentence:
+        sentence = fixed_sentence + " " + free_sentence
+    else:
+        sentence = free_sentence
+
+    USER_PROMPT = (f"Given this passage: *{sentence}*\n"
                    f"Replace BLANK with one of the options: {option_set}. "
                    "Respond only in the following format {'BLANK': '<text>'}")
 
