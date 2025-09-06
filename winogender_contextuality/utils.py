@@ -212,7 +212,7 @@ def get_internal_probs(measurements: list[Measurement] | list[dict]) -> np.ndarr
     return internal_probs
 
 
-def get_generation_probs(measurements: list[Measurement] | list[dict]) -> np.ndarray | None:
+def get_generation_probs(measurements: list[Measurement] | list[dict]) -> np.ndarray:
     """
     Calculates probabilities based on empirical generation frequencies from a list of
      Measurements (or equivalent dictionaries).
@@ -223,9 +223,9 @@ def get_generation_probs(measurements: list[Measurement] | list[dict]) -> np.nda
     # pronoun set is determined by the first measurement
     try:
         pnouns = measurements[0]['context']['pronouns_2']
-    except IndexError:
-        logger.debug(f"No measurements found.")
-        return None
+    except Exception as e:
+        logger.debug(f"Likely no measurements found. Exception raised: {e}")
+        return np.nan
 
     # calculate empirical generation probabilities (remove anything not in the list of pronouns)
     generated_pnouns = []
