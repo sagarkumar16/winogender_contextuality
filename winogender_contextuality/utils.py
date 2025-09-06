@@ -225,6 +225,7 @@ def get_generation_probs(measurements: list[Measurement] | list[dict]) -> np.nda
         pnouns = measurements[0]['context']['pronouns_2']
     except IndexError:
         logger.debug(f"No measurements found.")
+        return None
 
     # calculate empirical generation probabilities (remove anything not in the list of pronouns)
     generated_pnouns = []
@@ -233,6 +234,7 @@ def get_generation_probs(measurements: list[Measurement] | list[dict]) -> np.nda
             generated_pnouns.append(m['measurement']['BLANK'])
         except Exception as e:
             logger.debug(f"Exception {e} raised for item {m}")
+            pass
     generation_counter = Counter(generated_pnouns)
     generation_counter_clean = {k: generation_counter[k] for k in pnouns}
     num_valid_measurements = np.sum(list(generation_counter_clean.values()))
