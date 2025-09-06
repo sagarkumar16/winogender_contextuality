@@ -221,7 +221,10 @@ def get_generation_probs(measurements: list[Measurement] | list[dict]) -> np.nda
     :return: array of probabilities
     """
     # pronoun set is determined by the first measurement
-    pnouns = measurements[0]['context']['pronouns_2']
+    try:
+        pnouns = measurements[0]['context']['pronouns_2']
+    except IndexError:
+        logger.debug(f"No measurements found.")
 
     # calculate empirical generation probabilities (remove anything not in the list of pronouns)
     generated_pnouns = []
