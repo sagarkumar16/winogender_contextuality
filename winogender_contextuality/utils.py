@@ -142,7 +142,7 @@ def get_index(index: int,
     all_measurements = [d for d in data if d['index'] == index]
 
     if filter_none:
-        string_only = [d for d in all_measurements if isinstance(d['measurement']['BLANK'], str)]
+        string_only = [d for d in all_measurements if isinstance(d['measurement'], dict)]
         no_none = [d for d in string_only if d['measurement']['BLANK'] != "None"]
         return no_none
     else:

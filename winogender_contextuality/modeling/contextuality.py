@@ -365,6 +365,7 @@ def sentence_order_results(idx: int,
 
 def sentence_order_single_results(idx: int,
                                   model_measurements: list[dict],
+                                  mode: str,
                                   pnoun_order: int,  # 0 for [m, f], 1 for [f, m]
                                   default_pronoun: int = 1  # 0 for male, 1 for female
                                   ) -> dict:
@@ -374,6 +375,7 @@ def sentence_order_single_results(idx: int,
 
     :param idx: integer index sentence pair
     :param model_measurements: list of Measurement objects (or equivalently structured dictionaries)
+    :param mode: 'internal' or 'generation'
     :param pnoun_order: filtered pronoun order--NOTE: this uses default_pronoun indexing
     :param default_pronoun: pronoun index for probabiity calculations (default = 1 for female)
     :return:
@@ -385,34 +387,64 @@ def sentence_order_single_results(idx: int,
     data_dict = {'forward': {'fixed_pnoun': [], 'free_pnoun': [], 'pronouns': []},
                  'reverse': {'fixed_pnoun': [], 'free_pnoun': [], 'pronouns': []}}
 
-    for d in test_measurements:
+    if mode=='internal':
 
-        context = d['context']['sent_order']
+        for d in test_measurements:
+        
+            context = d['context']['sent_order'] 
+                
+            if context == [0, 1]:
+                dict_key = 'forward'
+                fixed_pnoun = d['context']['pnoun_order'][0]
+                free_pnoun = d['logits']
+                default_p1 = d['context']['pronouns_1'][default_pronoun]
+                default_p2 = d['context']['pronouns_2'][default_pronoun]
+            elif context == [1, 0]:
+                dict_key = 'reverse'
+                fixed_pnoun = d['context']['pnoun_order'][0]
+                free_pnoun = d['logits']
+                default_p1 = d['context']['pronouns_2'][default_pronoun]
+                default_p2 = d['context']['pronouns_1'][default_pronoun]
+            else:
+                raise AttributeError
+    
+            data_dict[dict_key]['fixed_pnoun'].append(fixed_pnoun.lower())
+            data_dict[dict_key]['free_pnoun'].append(free_pnoun)
+            data_dict[dict_key]['pronouns'] = [default_p1, default_p2]
 
-        if context == [0, 1]:
-            dict_key = 'forward'
-            fixed_pnoun = d['context']['pnoun_order'][0]
-            try:
-                free_pnoun = d['measurement']['BLANK']
-            except TypeError:
-                continue
-            default_p1 = d['context']['pronouns_1'][default_pronoun]
-            default_p2 = d['context']['pronouns_2'][default_pronoun]
-        elif context == [1, 0]:
-            dict_key = 'reverse'
-            fixed_pnoun = d['context']['pnoun_order'][0]
-            try:
-                free_pnoun = d['measurement']['BLANK']
-            except TypeError:
-                continue
-            default_p1 = d['context']['pronouns_2'][default_pronoun]
-            default_p2 = d['context']['pronouns_1'][default_pronoun]
-        else:
-            raise AttributeError
+    elif mode=='generation':
+    
+        for d in test_measurements:
+    
+            context = d['context']['sent_order']
+    
+            if context == [0, 1]:
+                dict_key = 'forward'
+                fixed_pnoun = d['context']['pnoun_order'][0]
+                try:
+                    free_pnoun = d['measurement']['BLANK']
+                except TypeError:
+                    continue
+                default_p1 = d['context']['pronouns_1'][default_pronoun]
+                default_p2 = d['context']['pronouns_2'][default_pronoun]
+            elif context == [1, 0]:
+                dict_key = 'reverse'
+                fixed_pnoun = d['context']['pnoun_order'][0]
+                try:
+                    free_pnoun = d['measurement']['BLANK']
+                except TypeError:
+                    continue
+                default_p1 = d['context']['pronouns_2'][default_pronoun]
+                default_p2 = d['context']['pronouns_1'][default_pronoun]
+            else:
+                raise AttributeError
+    
+            data_dict[dict_key]['fixed_pnoun'].append(fixed_pnoun.lower())
+            data_dict[dict_key]['free_pnoun'].append(free_pnoun.lower())
+            data_dict[dict_key]['pronouns'] = [default_p1, default_p2]
 
-        data_dict[dict_key]['fixed_pnoun'].append(fixed_pnoun.lower())
-        data_dict[dict_key]['free_pnoun'].append(free_pnoun.lower())
-        data_dict[dict_key]['pronouns'] = [default_p1, default_p2]
+    else: 
+        raise ValueError("Invalid mode. Must be 'internal' or 'generation'")
 
     return data_dict
 
@@ -457,8 +489,8 @@ def calculate_sentence_nc_fraction(data_dict: dict) -> float:
 
     return delta_c
 
-def calculate_sentence_dc_fraction_internal(data_dict: dict,
-                                            mode: str) -> float:
+def calculate_sentence_dc_fraction(data_dict: dict,
+                                   mode: str) -> float:
     """
     Calculates degree of contextuality based on the output from sentence_order_results()
 
