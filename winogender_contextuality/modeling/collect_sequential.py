@@ -518,7 +518,7 @@ def generate_one_null_context(mode: str,
         def _unlock_file(fh):
             pass
 
-    df = pd.read_csv(input_fpath, sep="\t")
+    df = pd.read_csv(input_fpath)
 
     # Normalize slice
     n_rows = len(df)
