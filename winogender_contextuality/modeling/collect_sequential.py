@@ -322,6 +322,7 @@ def generate_one_pronoun_noprompt(
 ):
     """
     Collect single-pronoun logits and completions over a slice of the dataset.
+    Use the prompt which specifies to ignore ordering effects.
 
     :param mode:
     :param model_name:
@@ -470,6 +471,150 @@ def generate_one_pronoun_noprompt(
 
         logger.info(f"Successfully collected {idx}. Writing {len(measurements_idx)} measurements to {output_fpath}.")
 
+@app.command()
+def generate_one_null_context(mode: str,
+        model_name: str,
+        temperature: float,
+        n_runs: int = 1000,
+        quantized: bool = True,
+        input_dir: pathlib.Path = INTERIM_DATA_DIR ,
+        output_dir: pathlib.Path = INTERIM_DATA_DIR,
+        start: int = 0,
+        end: int | None = None,                 # inclusive
+        input_file: str = "all_sentences.csv",
+        output_file: pathlib.Path | None = None # single, shared output file
+):
+
+    ##### NULL PRIMING SENTENCES #####
+    null_sentences = [
+        "The sky is blue.",
+        "North is south.",
+        "I didn't know Pudge was gonna hit a homer."
+    ]
+
+    logger.add(LOG_DIR / f"data_collection_{datetime.now()}.log")
+
+    input_fpath = input_dir / input_file
+
+    # single shared output file
+    if output_file is None:
+        fname_model = model_name.split('/')[-1]
+        dt = datetime.now().strftime('%H%M%d%m%y')
+        output_fpath = output_dir / f"null_measurements_{fname_model}_{temperature}_{dt}.ndjson"
+    else:
+        output_fpath = output_file
+    output_fpath.parent.mkdir(parents=True, exist_ok=True)
+
+    # file lock for parallel batches
+    try:
+        import fcntl
+        def _lock_file(fh):
+            fcntl.flock(fh, fcntl.LOCK_EX)
+        def _unlock_file(fh):
+            fcntl.flock(fh, fcntl.LOCK_UN)
+    except Exception:
+        def _lock_file(fh):
+            pass
+        def _unlock_file(fh):
+            pass
+
+    df = pd.read_csv(input_fpath, sep="\t")
+
+    # Normalize slice
+    n_rows = len(df)
+    start = max(0, start)
+    end_exclusive = n_rows if (end is None or end >= n_rows) else end + 1
+    if start >= end_exclusive:
+        logger.warning(f"No rows to process: start={start}, end={end}. n_rows={n_rows}.")
+        return
+
+    indices = df.index[start:end_exclusive]
+
+    mp = ModelProbs(
+        mode=mode,
+        model_name=model_name,
+        key=HF_KEY,
+        model_path=MODELS_DIR,
+        quantized=quantized
+    )
+    mp.load_model()
+
+    pbar = tqdm(indices, desc=f"Collecting Null Context Generation"
+                              f" [{start}-{(end if end is not None else n_rows - 1)}]")
+
+    for idx in pbar:
+        measurements_idx = []
+        pronouns = ast.literal_eval(df.differences[idx])
+        sentence = df.template[idx]
+
+        for prime in null_sentences:
+            pronoun_lists = [pronouns, pronouns[::-1]]
+            for n in range(2):
+                error_count = 0
+                p_list = pronoun_lists[n]
+                for _ in tqdm(range(n_runs)):
+                    prompt = role_content_base(*no_game_seq_logit_prompt(
+                        option_set=p_list,
+                        free_sentence=sentence,
+                        fixed_sentence=prime
+                    ))
+
+                    model_logits = mp.get_raw_logits(prompt=prompt).cpu()
+                    pronoun_idxs = mp.get_token_ids(options=pronouns[1])
+                    pronoun_logits = model_logits[[sum(pronoun_idxs, [])]].tolist()
+
+                    inputs, output = mp.get_completion(
+                        prompt=prompt,
+                        temperature=temperature,
+                        max_new_tokens=12
+                    )
+
+                    input_len = inputs.shape[1]
+                    decoded_output = mp.tokenizer.decode(
+                        output.sequences[0][input_len - 5:],
+                        skip_special_tokens=True
+                    )
+
+                    try:
+                        json_output = ast.literal_eval(decoded_output)
+                    except Exception as e:
+                        error_count += 1
+                        json_output = {'BLANK': 'None'}
+                        logger.warning(f"Error {e} for output: {decoded_output}. Error count {error_count}")
+
+                    c = Context(
+                        sent_order=["null", 0],
+                        pnoun_order=("null", n),
+                        sentence_1=prime,
+                        sentence_2=sentence,
+                        pronouns_1="null",
+                        pronouns_2=p_list
+                    )
+
+                    m = Measurement(
+                        index=idx,
+                        context=c,
+                        measurement=json_output,
+                        probabilities=None,
+                        logits=pronoun_logits
+                    )
+
+                    measurements_idx.append(m)
+
+                    # Append one-by-one to the single shared file
+                    with open(output_fpath, "a") as f:
+                        _lock_file(f)
+                        f.write(json.dumps(asdict(m)) + "\n")
+                        f.flush()
+                        os.fsync(f.fileno())
+                        _unlock_file(f)
+
+                    if error_count > 0:
+                        logger.warning(f"{error_count}/{n_runs} not captured.")
+
+        logger.info(f"Successfully collected {idx}. Writing {len(measurements_idx)} measurements to {output_fpath}.")
+
+    return
 
 
 
