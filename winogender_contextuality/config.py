@@ -34,6 +34,13 @@ LOG_DIR = PROJ_ROOT / "logs"
 # GPU Specification
 GPU_INDEX = 'cuda:0'
 
+##### NULL TESTING PRIMING SENTENCES #####
+null_sentences = [
+        "The sky is blue.",
+        "North is south.",
+        "I didn't know Pudge was gonna hit a homer."
+    ]
+
 # MODEL PARAMETERS
 with open(PARAMS_PATH, "r") as f:
     doc = yaml.safe_load(f)

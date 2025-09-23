@@ -485,13 +485,6 @@ def generate_one_null_context(mode: str,
         output_file: pathlib.Path | None = None # single, shared output file
 ):
 
-    ##### NULL PRIMING SENTENCES #####
-    null_sentences = [
-        "The sky is blue.",
-        "North is south.",
-        "I didn't know Pudge was gonna hit a homer."
-    ]
-
     logger.add(LOG_DIR / f"data_collection_{datetime.now()}.log")
 
     input_fpath = input_dir / input_file
