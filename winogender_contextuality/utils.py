@@ -90,7 +90,7 @@ def load_ndjson(data_path) -> list[dict]:
 
 def get_role_dict(
         templates_path: str = RAW_DATA_DIR / "templates.tsv",
-        pairs_path: str = RAW_DATA_DIR / "wino_pairs.tsv") -> dict:
+        pairs_path: str = INTERIM_DATA_DIR / "wino_pairs.tsv") -> dict:
 
     """
     Creates a dictionary with role (i.e. occupation or roles like "customer") for the referent in the blank sentence
