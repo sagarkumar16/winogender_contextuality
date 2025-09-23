@@ -89,11 +89,10 @@ def load_ndjson(data_path) -> list[dict]:
     return data
 
 def get_role_dict(
-        templates_path: str = RAW_DATA_DIR / "templates.tsv",
-        pairs_path: str = RAW_DATA_DIR / "pairs.tsv") -> dict:
+        templates_path: str = RAW_DATA_DIR / "templates.tsv") -> dict:
 
     """
-    Creates a dictionary with role (i.e. occupation or roles like "customer") for the referent in the blank setence
+    Creates a dictionary with role (i.e. occupation or roles like "customer") for the referent in the blank sentence
     and priming sentence.
 
     :param templates_path: path to templates file
@@ -103,8 +102,7 @@ def get_role_dict(
     """
 
     templates = pd.read_csv(templates_path, sep='\t')
-    pairs = pd.read_csv(pairs_path, sep='\t')
-    max_index = max(pairs.index)
+    max_index = max(tempates.index)
 
     pnoun_role_dict = defaultdict(dict)
     for idx in range(max_index):

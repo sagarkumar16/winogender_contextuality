@@ -1,62 +1,45 @@
 # %%
 import random
-import prompting as pr
-from utils import get_random_prepared_player
-
+import winogender_contextuality.modeling.prompting as pr
+from winogender_contextuality.utils import *
+from winogender_contextuality.config import *
 
 # %%
 
 # TODO: Adjust questions as necessary
 # TODO: this should take in the model from a ModelProbs class
 
-def get_question(q, i, idx):
-    if q == 'min':
-        question = "Answer saying what is the lowest payoff Player 1 can get in a single round."
+def get_question(q:str,
+                 blank_role: str,
+                 other_role: str):
 
-    if q == 'max':
-        question = "Answer saying what is the highest payoff Player 1 can get in a single round."
-    if q == 'actions':
-        question = "Answer saying all the action values Player 1 can pick."
+    """
 
-    if q == 'payoff':
-        x, y = random.choices(options, k=2)
-        question = f"Answer saying what is Player 1's payoff in a single round if Player 1 plays {x} and Player 2 plays {y}."
+    :param q:
+    :param blank_role:
+    :param other_role:
+    :return:
+    """
 
-    if q == 'round':
-        question = "Answer saying what is the current round of the game."
-
-    if q == 'action_i':
-        x = random.choice([1, 2])
-        question = f"Answer saying which action Player {x} played in round {i}."
-
-    if q == 'points_i':
-        question = f"Answer saying how many points Player 1 collected in round {i}."
-
-    if q == 'no_actions':
-        x = random.choice(options)
-        y = random.choice([1, 2])
-        question = f"Answer saying how many times Player {y} played action {x} overall."
-
-    if q == 'no_points':
-        question = f"Answer saying what is Player 1's current total payoff."
-
-    ## Sagar
     if q == 'anaphora':
-        question = "Answer saying who the pronoun replaced by BLANK is referring to."
 
-    if q == "PoS":
-        question = "Answer saying what part of speech the BLANK should be."
-        # answer should always be pronoun
+        question = ("Answer saying who the pronoun replaced by BLANK is referring to. "
+                    "Select from one of the following options: "
+                    f"[{blank_role}, {other_role}].")
+
+    if q == "pos":
+        question = ("Answer saying what part of speech the BLANK should be. "
+                    "Select from one of the following options: "
+                    "[noun, verb, pronoun, adjective, adverb, preposition, article].")
 
     if q == "other_gender":
-        # figure out a way to propagate the first character into this
-        x = ""
-        question = f"Answer saying the gender of the {x}."
-
+        question = (f"Answer saying the gender of the {other_role}. "
+                    "Select from one of the following options: "
+                    "[male, female]")
     
     return question
 
-
+# TODO: update this
 def get_meta_prompt_list(some_player, rules, options):
     q_list = ['min', 'max', 'actions', 'payoff', 'round', 'action_i', 'points_i', 'no_actions', 'no_points']
     if len(some_player['my_history']) == 0:
@@ -76,48 +59,42 @@ def get_meta_prompt_list(some_player, rules, options):
     return i, questions, q_list, prompts
 
 
-def gold_sim(q, question, running_player, i, options):
-    if q == 'min':
-        return '-50'
+def get_answers(q,
+                idx,
+                role_dict):
 
-    if q == 'max':
-        return '100'
+    ## need genders for all of them
+    ## need to both roles
+    ## can only run other_gender where there is a priming sentence
 
-    if q == 'actions':
-        return f"{options} or {list(reversed(options))}"
+    if q == 'anaphora':
+        role_dict
+        return
 
-    if q == 'payoff':
-        for x in options:
-            if question == f"Answer saying what is Player 1's payoff in a single round if Player 1 plays {x} and Player 2 plays {x}.":
-                return '100'
-        return '-50'
+    if q == 'pos':
+        return 'pronoun'
 
-    if q == 'round':
-        return f"{len(running_player['my_history']) + 1}"
-
-    if q == 'action_i':
-        if question == f"Answer saying which action Player 1 played in round {i}.":
-            return f"'{running_player['my_history'][i - 1]}'"
-        if question == f"Answer saying which action Player 2 played in round {i}.":
-            return f"'{running_player['partner_history'][i - 1]}'"
-
-    if q == 'points_i':
-        return str(running_player['outcome'][i - 1])
-
-    if q == 'no_points':
-        return str(sum(running_player['outcome']))
-
-    if q == 'no_actions':
-        for x in options:
-            if question == f"Answer saying how many times Player 1 played action {x} overall.":
-                return str(running_player['my_history'].count(x))
-
-            if question == f"Answer saying how many times Player 2 played action {x} overall.":
-                return str(running_player['partner_history'].count(x))
+    if q == 'other_gender':
+        return
 
 
-def running_player(options, memory_size, rewards):
-    t = random.choice(list(range(memory_size))) + 1
-    history = [random.choices(options, k=2) for step in range(t)]
-    player = get_random_prepared_player(history=history, rewards=rewards)
-    return player
+
+def run_metaprompting():
+
+    mp = ModelProbs(
+        mode=mode,
+        model_name=model_name,
+        key=HF_KEY,
+        model_path=MODELS_DIR,
+        quantized=quantized
+    )
+    mp.load_model()
+
+    role_dict = get_role_dict()
+
+
+
+    # wrap in this
+    prompt = pr.role_content_base()
+
+
