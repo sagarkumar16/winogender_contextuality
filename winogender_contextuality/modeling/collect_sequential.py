@@ -540,7 +540,7 @@ def generate_one_null_context(mode: str,
         pronouns = ast.literal_eval(df.differences[idx])
         sentence = df.template[idx]
 
-        for prime in null_sentences:
+        for i,prime in enumerate(null_sentences):
             pronoun_lists = [pronouns, pronouns[::-1]]
             for n in range(2):
                 error_count = 0
@@ -576,7 +576,7 @@ def generate_one_null_context(mode: str,
                         logger.warning(f"Error {e} for output: {decoded_output}. Error count {error_count}")
 
                     c = Context(
-                        sent_order=["null", 0],
+                        sent_order=[f"null_{i}", 0],
                         pnoun_order=("null", n),
                         sentence_1=prime,
                         sentence_2=sentence,
