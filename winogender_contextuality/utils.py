@@ -102,7 +102,7 @@ def get_role_dict(
     """
 
     templates = pd.read_csv(templates_path, sep='\t')
-    max_index = max(tempates.index)
+    max_index = max(templates.index)
 
     pnoun_role_dict = defaultdict(dict)
     for idx in range(max_index):
