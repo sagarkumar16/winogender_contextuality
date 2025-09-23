@@ -9,7 +9,7 @@ from utils import get_random_prepared_player
 # TODO: Adjust questions as necessary
 # TODO: this should take in the model from a ModelProbs class
 
-def get_question(q, i, options):
+def get_question(q, i, idx):
     if q == 'min':
         question = "Answer saying what is the lowest payoff Player 1 can get in a single round."
 
@@ -40,6 +40,20 @@ def get_question(q, i, options):
     if q == 'no_points':
         question = f"Answer saying what is Player 1's current total payoff."
 
+    ## Sagar
+    if q == 'anaphora':
+        question = "Answer saying who the pronoun replaced by BLANK is referring to."
+
+    if q == "PoS":
+        question = "Answer saying what part of speech the BLANK should be."
+        # answer should always be pronoun
+
+    if q == "other_gender":
+        # figure out a way to propagate the first character into this
+        x = ""
+        question = f"Answer saying the gender of the {x}."
+
+    
     return question
 
 
