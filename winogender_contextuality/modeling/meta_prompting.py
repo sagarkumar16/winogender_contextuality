@@ -123,11 +123,11 @@ def run_metaprompting(
         output_dir: pathlib.Path = INTERIM_DATA_DIR,
         start: int = 0,
         end: int | None = None,                 # inclusive
-        input_file: str = "all_sentences.csv",
+        input_file: str = "wino_pairs.tsv",
         output_file: pathlib.Path | None = None # single, shared output file
 ):
 
-    logger.add(LOG_DIR / f"data_collection_{datetime.now()}.log")
+    logger.add(LOG_DIR / f"metaprompting_{datetime.now()}.log")
 
     input_fpath = input_dir / input_file
 
@@ -145,27 +145,16 @@ def run_metaprompting(
         import fcntl
         def _lock_file(fh):
             fcntl.flock(fh, fcntl.LOCK_EX)
-
         def _unlock_file(fh):
             fcntl.flock(fh, fcntl.LOCK_UN)
     except Exception:
         def _lock_file(fh):
             pass
-
         def _unlock_file(fh):
             pass
 
     if questions is None:
         questions = ['anaphora', 'pos', 'other_gender']
-
-    mp = ModelProbs(
-        mode=mode,
-        model_name=model_name,
-        key=HF_KEY,
-        model_path=MODELS_DIR,
-        quantized=quantized
-    )
-    mp.load_model()
 
     role_dict = get_role_dict()
     df = pd.read_csv(input_fpath, sep="\t")
@@ -244,7 +233,7 @@ def run_metaprompting(
 
                             input_len = inputs.shape[1]
                             decoded_output = mp.tokenizer.decode(
-                                output.sequences[0][input_len - 5:],
+                                output.sequences[0][input_len - 6:],
                                 skip_special_tokens=True
                             )
 
