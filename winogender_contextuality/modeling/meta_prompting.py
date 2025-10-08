@@ -2,6 +2,7 @@
 import os
 from itertools import permutations
 import pathlib
+from loguru import logger
 from datetime import datetime
 import winogender_contextuality.modeling.prompting as pr
 from winogender_contextuality.utils import *
