@@ -269,6 +269,5 @@ def run_metaprompting(
 
         logger.info(f"Successfully collected {idx}. Writing {len(measurements_idx)} measurements to {output_fpath}.")
 
-
-
-
+if __name__ == "__main__":
+    app()
