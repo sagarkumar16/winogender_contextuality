@@ -13,7 +13,24 @@ from loguru import logger
 import pandas as pd
 from winogender_contextuality.config import *
 
+
 app = typer.Typer()
+
+gendered_pronouns_dict = {
+    '$POSS_PRONOUN': ['his', 'her'],
+    '$NOM_PRONOUN': ['he', 'she'],
+    '$ACC_PRONOUN': ['him', 'her']
+}
+
+nb_pronouns_dict = {
+    '$POSS_PRONOUN': ['their', 'xyr'],
+    '$NOM_PRONOUN': ['they', 'xe'],
+    '$ACC_PRONOUN': ['them', 'xem']
+}
+
+pronoun_genders = {'male': ['he', 'him', 'his'],
+                   'female': ['she', 'her', 'her'],
+                   'nb': ['their', 'they', 'them', 'xyr', 'xe', 'xem']}
 
 @dataclass
 class Context:
@@ -31,6 +48,13 @@ class Measurement:
     measurement: dict[str, str]
     probabilities: tuple[float] | None
     logits: tuple[float] | None
+
+@dataclass
+class MetaQA:
+    index: int
+    question: str
+    response: str
+    answer: str
 
 @app.command()
 def flush():

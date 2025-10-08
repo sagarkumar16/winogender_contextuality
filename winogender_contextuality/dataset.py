@@ -7,21 +7,10 @@ import re
 import pickle
 import typer
 
-from config import PROCESSED_DATA_DIR, RAW_DATA_DIR, INTERIM_DATA_DIR
+from winogender_contextuality.config import PROCESSED_DATA_DIR, RAW_DATA_DIR, INTERIM_DATA_DIR
+from winogender_contextuality.utils import gendered_pronouns_dict, nb_pronouns_dict
 
 app = typer.Typer()
-
-gendered_pronouns_dict = {
-    '$POSS_PRONOUN': ['his', 'her'],
-    '$NOM_PRONOUN': ['he', 'she'],
-    '$ACC_PRONOUN': ['him', 'her']
-}
-
-nb_pronouns_dict = {
-    '$POSS_PRONOUN': ['their', 'xyr'],
-    '$NOM_PRONOUN': ['they', 'xe'],
-    '$ACC_PRONOUN': ['them', 'xem']
-}
 
 
 @app.command()
