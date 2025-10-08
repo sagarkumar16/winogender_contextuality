@@ -198,7 +198,7 @@ def run_metaprompting(
             p1 = pronouns[s_perm[0]]
             p2 = pronouns[s_perm[1]]
 
-            first_sentences = [None, s1]
+            first_sentences = [s1] # redundancy for ease of code translation
 
             blank_role, other_role = role_dict.get(idx).get(direction)
 
