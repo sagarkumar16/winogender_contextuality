@@ -241,17 +241,27 @@ def run_metaprompting(
                             )
 
                             try:
-                                json_output = ast.literal_eval(decoded_output)
+                                json_output = ast.literal_eval(decoded_output.replace("final"))
                             except Exception as e:
                                 error_count += 1
                                 json_output = {'ANSWER': 'None'}
                                 logger.warning(f"Error {e} for output: {decoded_output}. Error count {error_count}")
 
+                            c = Context(
+                                sent_order=s_perm,
+                                pnoun_order=(first_pronoun, j),
+                                sentence_1=first_sentence_filled,
+                                sentence_2=s2,
+                                pronouns_1=p1,
+                                pronouns_2=p2
+                            )
+
                             qa = MetaQA(
                                 index=idx,
                                 question=question,
                                 response=json_output['ANSWER'],
-                                answer=get_answers(q=question, priming_pnoun=first_pronoun, blank_role=blank_role)
+                                answer=get_answers(q=question, priming_pnoun=first_pronoun, blank_role=blank_role),
+                                context=c
                             )
 
                             measurements_idx.append(idx)
