@@ -52,6 +52,7 @@ class Measurement:
 @dataclass
 class MetaQA:
     index: int
+    context: Context
     question: str
     response: str
     answer: str
