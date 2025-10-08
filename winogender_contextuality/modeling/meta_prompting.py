@@ -4,6 +4,7 @@ from itertools import permutations
 import pathlib
 from loguru import logger
 from datetime import datetime
+import tqdm
 import winogender_contextuality.modeling.prompting as pr
 from winogender_contextuality.utils import *
 from winogender_contextuality.config import *
@@ -114,6 +115,7 @@ def metaprompt_template(option_set: list[str],
 
     return SYSTEM_PROMPT, USER_PROMPT, ASSISTANT_PROMPT
 
+@app.command()
 def run_metaprompting(
         mode: str,
         model_name: str,
