@@ -241,7 +241,7 @@ def run_metaprompting(
                             )
 
                             try:
-                                json_output = ast.literal_eval(decoded_output.replace("final"))
+                                json_output = ast.literal_eval(decoded_output.replace("final", ""))
                             except Exception as e:
                                 error_count += 1
                                 json_output = {'ANSWER': 'None'}
