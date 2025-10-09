@@ -419,3 +419,49 @@ def sentence_order_results_single_gen(idx: int,
     return data_dict
 
 
+def get_meta_index(idx: int,
+                   lst: list[dict]):
+    """
+    :param idx: pair index
+    :param lst: a list of MetaQA objects or equivalent dictionaries
+
+    Filters list of responses by index.
+    """
+
+    return [x for x in lst if x['index'] == idx]
+
+
+def get_meta_question(q: str,
+                      lst: list[dict]):
+    """
+    :param q: string key of the question
+    :param lst: a list of MetaQA objects or equivalent dictionaries
+
+    Filters list of responses by question.
+    """
+
+    return [x for x in lst if x['question'] == q]
+
+
+def get_meta_scores(lst: list[dict],
+                    questions: list[str] = ['anaphora', 'pos', 'other_gender']):
+    dic = {idx: {} for idx in range(60)}
+
+    for idx in range(60):
+        for q in questions:
+            responses = get_meta_question(q, get_meta_index(idx, lst))
+            n_correct = len([r for r in responses if
+                             r['response'] == r['answer'].replace("the ", "").replace("a ", "").strip().lower()])
+            dic[idx][q] = n_correct / 8  # as a fraction of best possible (including errors)
+
+    return dic
+
+def get_average_meta(dic: dict):
+
+    response_arr = []
+    for idx, dic in dic.items():
+        response_arr.append(list(dic.values()))
+    response_arr = np.array(response_arr)
+
+    return np.mean(response_arr, axis=0)
+
