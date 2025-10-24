@@ -40,6 +40,8 @@ class Context:
     sentence_2: str
     pronouns_1: list[str]
     pronouns_2: list[str]
+    case_1: str
+    case_2: str
 
 @dataclass
 class Measurement:
