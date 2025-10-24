@@ -37,6 +37,12 @@ def main(
     else:
         pronouns_dict = gendered_pronouns_dict
 
+    if "pronoun_type" in df.columns:
+        _case = True
+    else:
+        _case = False
+        logger.warning(f"No grammatical case columns.")
+
     new_rows = []
     pbar = tqdm(range(0, len(df), 2))
 
@@ -54,20 +60,28 @@ def main(
                 s = s.replace(pronoun_type, 'BLANK')
                 new_row[f"template_{idx+1}"] = s
                 new_row[f"differences_{idx+1}"] = pronouns_dict[pronoun_type]
+                if _case:
+                    new_row[f"case_{idx+1}"] = chunk['pronoun_type'][idx]
             else:
                 logger.warning(f"Could not find a pronoun in {s}")
 
-            if df.answer[idx]:
+            if chunk.answer[idx]:
                 new_row[f"referent_{idx+1}"] = chunk['other-participant(1)'][idx]
             else:
                 new_row[f"referent_{idx+1}"] = chunk['occupation(0)'][idx]
+
+            
+
+            
+
+            
 
         new_rows.append(new_row)
 
     # Adding a 61st test row
     test_row = new_rows[-1].copy()
-    test_row['differences_1'] = ['she', 'potato']
-    test_row['differences_2'] = ['she', 'potato']
+    test_row['differences_1'] = ['she', 'cheese']
+    test_row['differences_2'] = ['she', 'cheese']
     new_rows.append(test_row)
 
     output_df = pd.DataFrame(new_rows)
