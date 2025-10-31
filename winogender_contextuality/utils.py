@@ -11,6 +11,7 @@ from scipy.spatial import distance
 from dataclasses import dataclass, asdict
 from loguru import logger
 import pandas as pd
+import matplotlib.pyplot as plt
 from winogender_contextuality.config import *
 
 
@@ -467,3 +468,5 @@ def get_average_meta(dic: dict):
 
     return np.mean(response_arr, axis=0)
 
+def is_valid_tuple(tup):
+    return not any(np.isnan(arr).any() for arr in tup)

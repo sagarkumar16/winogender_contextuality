@@ -582,6 +582,3 @@ def calculate_sentence_dc_fraction(data_dict: dict,
 
 
 
-
-
-
