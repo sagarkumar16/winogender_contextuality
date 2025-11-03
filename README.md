@@ -55,8 +55,8 @@ In ```data/raw``` import the
 [WinoPron Templates](https://github.com/uds-lsv/winopron/blob/main/data.zip). The WinoPron templates must be unzipped 
 using the password provided in their README.
 
-## Collecting Data
-Once the data has been imported, you can create the data structures is primarily used for collection by running 
+#### Formatting External Data
+Once the data has been imported, you can create the data structures primarily used for collection by running 
 
 ```bash 
 python dataset.py --input-path=[path]/data/raw/templates.py --output-path=[path]/data/interim/wino_pairs.tsv
@@ -67,8 +67,10 @@ python dataset.py --input-path=[path]/data/raw/data/new_templates.py --output-pa
 ```
 for the WinoPron pairs. 
 
-After doing this, you can modify the bash script in ```collect_batches.py``` to run data collection via slurm or any 
-other workload manager (or just remove those portions and run the batched processing script).
+## Collecting Data
+To collect data, you can run methods in ```collect_sequential.py``` directly, or you can modify the bash script in 
+```collect_batches.py``` to run data collection via slurm or any  other workload manager 
+(or just remove those portions and run the batched processing script).
 
 ## Prompting
 Prompts should have an assistant role such that the first token generated is the BLANK which is being resolved. 
