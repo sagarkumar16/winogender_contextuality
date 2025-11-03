@@ -30,7 +30,14 @@ Set your Huggingface Key as an environment parameter using
 export HF_KEY="your-key-here"
 ```
 
-## External Data
+## Setting Up the Data Directory
+
+### Option 1. Automatic Setup
+To easily begin running experiments, download and unzip the ```data.zip``` file in this repository in a drive which can 
+easily hold several gigabytes of data. Once you have done so, update ```config.py``` with the appropriate filepaths.
+
+You can add a ```models``` subdirectory to this folder, or store your local models elsewhere. 
+### Option 2. Manual Setup
 Whether in the project folder or on a drive that can easily store up to a few gigabytes of data, create a directory 
 structured as follows:
 
