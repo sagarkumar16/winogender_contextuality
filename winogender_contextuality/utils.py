@@ -8,6 +8,7 @@ from collections import defaultdict, Counter
 import numpy as np
 from scipy.special import softmax
 from scipy.spatial import distance
+import statsmodels.stats.proportion as smp
 from dataclasses import dataclass, asdict
 from loguru import logger
 import pandas as pd
@@ -269,6 +270,64 @@ def get_generation_probs(measurements: list[Measurement] | list[dict]) -> np.nda
     generation_probs = np.array(list(generation_counter_clean.values())) / num_valid_measurements
 
     return generation_probs
+
+def get_generation_cis(measurements: list[Measurement] | list[dict]) -> np.ndarray:
+    """
+    Calculates confidence intervals based on empirical generation frequencies from a list of
+     Measurements (or equivalent dictionaries). Uses normal distribution assumptions get z-scores of Bernoulli trials. 
+
+    :param measurements: list of Measurement objects (or equivelant dictionaries)
+    :return: array of probabilities
+    """
+    # pronoun set is determined by the first measurement
+    try:
+        pnouns = measurements[0]['context']['pronouns_2']
+    except Exception as e:
+        logger.debug(f"Likely no measurements found. Exception raised: {e}")
+        return np.nan
+
+    # calculate empirical generation probabilities (remove anything not in the list of pronouns)
+    generated_pnouns = []
+    for m in measurements:
+        try:
+            generated_pnouns.append(m['measurement']['BLANK'])
+        except Exception as e:
+            logger.debug(f"Exception {e} raised for item {m}")
+            pass
+    generation_counter = Counter(generated_pnouns)
+    generation_counter_clean = {k: generation_counter[k] for k in pnouns}
+    num_valid_measurements = np.sum(list(generation_counter_clean.values()))
+
+    generation_cis = [smp.proportion_confint(val, num_valid_measurements, alpha=0.05, method='wilson') for val in generation_counter_clean.values()]
+
+    return generation_cis
+
+def get_generation_details(measurements: list[Measurement] | list[dict]) -> np.ndarray:
+    """
+    Returns successes and total number of measurements from each trial.
+
+    :param measurements: list of Measurement objects (or equivelant dictionaries)
+    :return: array of probabilities
+    """
+    # pronoun set is determined by the first measurement
+    try:
+        pnouns = measurements[0]['context']['pronouns_2']
+    except Exception as e:
+        logger.debug(f"Likely no measurements found. Exception raised: {e}")
+        return np.nan
+
+    # calculate empirical generation probabilities (remove anything not in the list of pronouns)
+    generated_pnouns = []
+    for m in measurements:
+        try:
+            generated_pnouns.append(m['measurement']['BLANK'])
+        except Exception as e:
+            logger.debug(f"Exception {e} raised for item {m}")
+            pass
+    generation_counter = Counter(generated_pnouns)
+    generation_counter_clean = {k: generation_counter[k] for k in pnouns}
+    num_valid_measurements = np.sum(list(generation_counter_clean.values()))
+    return generation_counter_clean, num_valid_measurements
 
 
 def get_generation_logit_distortion(measurements: list[Measurement] | list[dict]):

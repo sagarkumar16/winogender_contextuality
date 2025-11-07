@@ -544,6 +544,7 @@ def generate_one_null_context(mode: str,
         measurements_idx = []
         pronouns = ast.literal_eval(df.differences[idx])
         sentence = df.template[idx]
+        case = df.case[idx]
 
         for i,prime in enumerate(null_sentences):
             pronoun_lists = [pronouns, pronouns[::-1]]
@@ -586,7 +587,9 @@ def generate_one_null_context(mode: str,
                         sentence_1=prime,
                         sentence_2=sentence,
                         pronouns_1="null",
-                        pronouns_2=p_list
+                        pronouns_2=p_list,
+                        case1="null",
+                        case2=case
                     )
 
                     m = Measurement(
