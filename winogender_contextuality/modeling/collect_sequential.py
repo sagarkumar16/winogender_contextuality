@@ -588,8 +588,8 @@ def generate_one_null_context(mode: str,
                         sentence_2=sentence,
                         pronouns_1="null",
                         pronouns_2=p_list,
-                        case1="null",
-                        case2=case
+                        case_1="null",
+                        case_2=case
                     )
 
                     m = Measurement(
