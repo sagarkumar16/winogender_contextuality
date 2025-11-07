@@ -30,7 +30,14 @@ Set your Huggingface Key as an environment parameter using
 export HF_KEY="your-key-here"
 ```
 
-## External Data
+## Setting Up the Data Directory
+
+### Option 1. Automatic Setup
+To easily begin running experiments, download and unzip the ```data.zip``` file in this repository in a drive which can 
+easily hold several gigabytes of data. Once you have done so, update ```config.py``` with the appropriate filepaths.
+
+You can add a ```models``` subdirectory to this folder, or store your local models elsewhere. 
+### Option 2. Manual Setup
 Whether in the project folder or on a drive that can easily store up to a few gigabytes of data, create a directory 
 structured as follows:
 
@@ -48,8 +55,8 @@ In ```data/raw``` import the
 [WinoPron Templates](https://github.com/uds-lsv/winopron/blob/main/data.zip). The WinoPron templates must be unzipped 
 using the password provided in their README.
 
-## Collecting Data
-Once the data has been imported, you can create the data structures is primarily used for collection by running 
+#### Formatting External Data
+Once the data has been imported, you can create the data structures primarily used for collection by running 
 
 ```bash 
 python dataset.py --input-path=[path]/data/raw/templates.py --output-path=[path]/data/interim/wino_pairs.tsv
@@ -60,8 +67,10 @@ python dataset.py --input-path=[path]/data/raw/data/new_templates.py --output-pa
 ```
 for the WinoPron pairs. 
 
-After doing this, you can modify the bash script in ```collect_batches.py``` to run data collection via slurm or any 
-other workload manager (or just remove those portions and run the batched processing script).
+## Collecting Data
+To collect data, you can run methods in ```collect_sequential.py``` directly, or you can modify the bash script in 
+```collect_batches.py``` to run data collection via slurm or any  other workload manager 
+(or just remove those portions and run the batched processing script).
 
 ## Prompting
 Prompts should have an assistant role such that the first token generated is the BLANK which is being resolved. 
