@@ -119,7 +119,7 @@ class ModelProbs:
             'pad_token_id': self.tokenizer.eos_token_id,
             'max_new_tokens': 6,
             'temperature': 0.5,
-            'top_k': 2
+            'top_k': 40
         }
 
         # If kwargs were provided, update the defaults -- this is where MODEL_PARAMS.params from config go
