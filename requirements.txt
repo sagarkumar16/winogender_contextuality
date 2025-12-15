@@ -24,3 +24,4 @@ transformers
 xarray
 torch
 ipykernel
+joypy
