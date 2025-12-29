@@ -197,6 +197,8 @@ def run_metaprompting(
             s2 = sentences[s_perm[1]]
             p1 = pronouns[s_perm[0]]
             p2 = pronouns[s_perm[1]]
+            case1 = cases[s_perm[0]]
+            case2 = cases[s_perm[1]]
 
             first_sentences = [s1] # redundancy for ease of code translation
 
@@ -253,7 +255,9 @@ def run_metaprompting(
                                 sentence_1=first_sentence_filled,
                                 sentence_2=s2,
                                 pronouns_1=p1,
-                                pronouns_2=p2
+                                pronouns_2=p2,
+                                case_1=case1,
+                                case_2=case2
                             )
 
                             qa = MetaQA(
