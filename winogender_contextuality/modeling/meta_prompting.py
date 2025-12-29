@@ -189,6 +189,7 @@ def run_metaprompting(
         sentences = {0: df.template_1[idx], 1: df.template_2[idx]}
         pronouns = {0: ast.literal_eval(df.differences_1[idx]),
                     1: ast.literal_eval(df.differences_2[idx])}
+        cases = {0: df.case_1[idx], 1: df.case_2[idx]}
 
         orientations = ['forward', 'reverse']
 
