@@ -159,8 +159,16 @@ def run_metaprompting(
     if questions is None:
         questions = ['anaphora', 'pos', 'other_gender']
 
-    role_dict = get_role_dict()
+    #role_dict = get_role_dict()
     df = pd.read_csv(input_fpath, sep="\t")
+
+    role_dict = {
+        idx: {
+            "forward": (df.referent_2[idx], df.referent_1[idx]),
+            "reverse": (df.referent_1[idx], df.referent_2[idx]),
+        }
+        for idx in df.index
+    }
 
     # Normalize slice
     n_rows = len(df)
