@@ -254,7 +254,8 @@ def run_metaprompting(
                             inputs, output = mp.get_completion(
                                 prompt=prompt,
                                 temperature=temperature,
-                                max_new_tokens=12
+                                max_new_tokens=12,
+                                continue_final_message=assistant
                             )
 
                             input_len = inputs.shape[1]

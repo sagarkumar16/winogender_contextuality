@@ -165,6 +165,7 @@ def generate_one_pronoun(
     :param temperature:
     :param n_runs:
     :param quantized:
+    :param assistant:
     :param input_dir:
     :param output_dir: ndjson file
     :param start: 0-based start index (inclusive)
@@ -264,7 +265,8 @@ def generate_one_pronoun(
                             inputs, output = mp.get_completion(
                                 prompt=prompt,
                                 temperature=temperature,
-                                max_new_tokens=12
+                                max_new_tokens=12,
+                                continue_final_message=assistant
                             )
 
                             input_len = inputs.shape[1]
@@ -570,7 +572,8 @@ def generate_one_null_context(mode: str,
                     inputs, output = mp.get_completion(
                         prompt=prompt,
                         temperature=temperature,
-                        max_new_tokens=12
+                        max_new_tokens=12,
+                        continue_final_message=assistant
                     )
 
                     input_len = inputs.shape[1]

@@ -102,6 +102,7 @@ class ModelProbs:
     #  - this will have to do all the first_id nonsense to make sure we are looking at the correct probs
     def get_completion(self,
                        prompt: str,
+                       continue_final_message: bool = True,
                        **kwargs):
 
         """
@@ -129,7 +130,8 @@ class ModelProbs:
             raise NotImplementedError
 
         else:
-            inputs = (self.tokenizer.apply_chat_template(prompt, return_tensors="pt", continue_final_message=True)
+            inputs = (self.tokenizer.apply_chat_template(prompt, return_tensors="pt",
+                                                         continue_final_message=continue_final_message)
                       .to(self.gpu))
 
             outputs = self.model.generate(inputs, **generation_args)
