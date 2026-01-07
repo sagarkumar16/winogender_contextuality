@@ -273,11 +273,10 @@ def role_content_base(system: str | None,
     else:
         assistant_dict = None
 
-    message = [
-        system_dict,
-        user_dict,
-        assistant_dict
-    ]
+    message = []
+    for d in [system_dict, user_dict,assistant_dict]:
+        if d is not None:
+            message.append(d)
 
     return message
 
