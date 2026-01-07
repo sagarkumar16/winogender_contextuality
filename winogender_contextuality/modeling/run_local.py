@@ -38,8 +38,7 @@ def load_model(model_name: str,
             model_name,
             token=api_key,
             cache_dir=cache_dir,
-            device_map="auto",
-            attn_implementation="eager"
+            device_map="auto"
         )
         model.config.use_cache = False
         logger.info(f"Model cached in {cache_dir}", flush=True)
