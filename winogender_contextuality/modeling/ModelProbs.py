@@ -103,6 +103,7 @@ class ModelProbs:
     def get_completion(self,
                        prompt: str,
                        max_new_tokens: int = 6,
+                       continue_final_message: bool = True,
                        **kwargs):
 
         """
@@ -136,7 +137,7 @@ class ModelProbs:
 
         else:
             inputs = (self.tokenizer.apply_chat_template(prompt, return_tensors="pt",
-                                                         continue_final_message=True)
+                                                         continue_final_message=continue_final_message)
                       .to(self.gpu))
 
             outputs = self.model.generate(inputs, **generation_args)
