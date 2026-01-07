@@ -117,11 +117,16 @@ class ModelProbs:
             'return_dict_in_generate': True,
             'output_hidden_states': True,
             'do_sample': True,
-            'pad_token_id': self.tokenizer.eos_token_id,
             'max_new_tokens': 6,
             'temperature': 0.5,
             'top_k': 40
         }
+
+        pad_id = self.tokenizer.pad_token_id
+        eos_id = self.tokenizer.eos_token_id
+
+        default_args["pad_token_id"] = pad_id if pad_id is not None else eos_id
+        default_args["eos_token_id"] = eos_id
 
         # If kwargs were provided, update the defaults -- this is where MODEL_PARAMS.params from config go
         generation_args = {**default_args, **kwargs}
