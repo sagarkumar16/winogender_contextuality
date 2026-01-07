@@ -117,7 +117,7 @@ class ModelProbs:
             'return_dict_in_generate': True,
             'output_hidden_states': True,
             'do_sample': True,
-            'max_new_tokens': 6,
+            'max_new_tokens': 10,
             'temperature': 0.5,
             'top_k': 40
         }
