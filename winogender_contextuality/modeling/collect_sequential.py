@@ -149,6 +149,7 @@ def generate_one_pronoun(
         temperature: float,
         n_runs: int = 1000,
         quantized: bool = True,
+        assistant: bool = True,
         input_dir: pathlib.Path = INTERIM_DATA_DIR ,
         output_dir: pathlib.Path = INTERIM_DATA_DIR,
         start: int = 0,
@@ -248,10 +249,12 @@ def generate_one_pronoun(
 
                         for _ in tqdm(range(n_runs)):
                             p_list = list(p2_perm)
+
                             prompt = role_content_base(*no_game_seq_logit_prompt(
                                 option_set=p_list,
                                 free_sentence=s2,
-                                fixed_sentence=first_sentence_filled
+                                fixed_sentence=first_sentence_filled,
+                                assistant=assistant
                             ))
 
                             model_logits = mp.get_raw_logits(prompt=prompt).cpu()
@@ -478,17 +481,18 @@ def generate_one_pronoun_noprompt(
 
 @app.command()
 def generate_one_null_context(mode: str,
-        model_name: str,
-        temperature: float,
-        n_runs: int = 1000,
-        quantized: bool = True,
-        input_dir: pathlib.Path = INTERIM_DATA_DIR ,
-        output_dir: pathlib.Path = INTERIM_DATA_DIR,
-        start: int = 0,
-        end: int | None = None,                 # inclusive
-        input_file: str = "all_sentences.csv",
-        output_file: pathlib.Path | None = None # single, shared output file
-):
+                              model_name: str,
+                              temperature: float,
+                              n_runs: int = 1000,
+                              quantized: bool = True,
+                              assistant = True,
+                              input_dir: pathlib.Path = INTERIM_DATA_DIR ,
+                              output_dir: pathlib.Path = INTERIM_DATA_DIR,
+                              start: int = 0,
+                              end: int | None = None,                 # inclusive
+                              input_file: str = "all_sentences.csv",
+                              output_file: pathlib.Path | None = None # single, shared output file
+                              ):
 
     logger.add(LOG_DIR / f"data_collection_{datetime.now()}.log")
 
@@ -555,7 +559,8 @@ def generate_one_null_context(mode: str,
                     prompt = role_content_base(*no_game_seq_logit_prompt(
                         option_set=p_list,
                         free_sentence=sentence,
-                        fixed_sentence=prime
+                        fixed_sentence=prime,
+                        assistant=assistant,
                     ))
 
                     model_logits = mp.get_raw_logits(prompt=prompt).cpu()

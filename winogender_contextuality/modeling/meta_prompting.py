@@ -82,7 +82,10 @@ def metaprompt_template(option_set: list[str],
                         fixed_sentence: None | str,
                         question: str,
                         blank_role: str,
-                        other_role: str):
+                        other_role: str,
+                        system: bool = True,
+                        user: bool = True,
+                        assistant: bool = True):
     """
     Outputs a zero-shot user prompt which needs to be fit into a template. This prompt should only be used to probe model state.
 
@@ -92,26 +95,34 @@ def metaprompt_template(option_set: list[str],
     :return: user prompt
     """
 
-    SYSTEM_PROMPT = ("Below you will find a passage in *bold* which contains precisely one instance of "
-                     "the term BLANK. "
-                     "After the passage, two possible options will be provided to replace the BLANK."
-                     "After being presented the options, you will be asked to answer a question."
-                     "The task is designed to be unambiguous, so please read the passage and question carefully, "
-                     "provide only one answer, and do not reorder the data.")
+    if system:
+        SYSTEM_PROMPT = ("Below you will find a passage in *bold* which contains precisely one instance of "
+                         "the term BLANK. "
+                         "After the passage, two possible options will be provided to replace the BLANK."
+                         "After being presented the options, you will be asked to answer a question."
+                         "The task is designed to be unambiguous, so please read the passage and question carefully, "
+                         "provide only one answer, and do not reorder the data.")
+    else:
+        SYSTEM_PROMPT = None
 
     if fixed_sentence:
         sentence = fixed_sentence + " " + free_sentence
     else:
         sentence = free_sentence
 
+    if user:
+        USER_PROMPT = (f"Given this passage: *{sentence}*\n" 
+                       f"One of two options may be chose to replace the BLANK: {option_set}"
+                       "Given this information, please do the following: "
+                       f"{get_question(question, blank_role, other_role)} "
+                       "Respond only in the following format {'ANSWER': '<text>'}")
+    else:
+        USER_PROMPT = None
 
-    USER_PROMPT = (f"Given this passage: *{sentence}*\n" 
-                   f"One of two options may be chose to replace the BLANK: {option_set}"
-                   "Given this information, please do the following: "
-                   f"{get_question(question, blank_role, other_role)} "
-                   "Respond only in the following format {'ANSWER': '<text>'}")
-
-    ASSISTANT_PROMPT = "{'ANSWER':'"
+    if assistant:
+        ASSISTANT_PROMPT = "{'ANSWER':'"
+    else:
+        ASSISTANT_PROMPT = None
 
     return SYSTEM_PROMPT, USER_PROMPT, ASSISTANT_PROMPT
 
@@ -122,6 +133,7 @@ def run_metaprompting(
         temperature: float,
         questions: list[str] | None = None,
         quantized: bool = True,
+        assistant: bool = True,
         input_dir: pathlib.Path = INTERIM_DATA_DIR ,
         output_dir: pathlib.Path = INTERIM_DATA_DIR,
         start: int = 0,

@@ -2,13 +2,19 @@
 # NOTE THAT A SINGLE QUOTATION IS ADDED AT THE BLANKS
 
 def no_game_prompt(options: list,
-                   sentence: str):
+                   sentence: str,
+                   system: bool = True,
+                   user: bool = True,
+                   assistant: bool = True):
 
     """
     Outputs a zero-shot user prompt which needs to be fit into a template.
 
     :param options: A LIST of pronoun options. MUST be ordered to measure contextuality.
     :param sentence: A sentence with a [BLANK] to fill out
+    :param system: If true, a system prompt will be output
+    :param user: If true, a user prompt will be output
+    :param assistant: If true, a assistant prompt will be output
     :return: user prompt
     """
 
@@ -123,7 +129,11 @@ def no_game_seq_prompt(option_sets: list[list[str]],
 
 def no_game_seq_logit_prompt(option_set: list[str],
                              free_sentence: str,
-                             fixed_sentence: None | str):
+                             fixed_sentence: None | str,
+                             system: bool = True,
+                             user: bool = True,
+                             assistant: bool = True
+                             ):
 
     """
     Outputs a zero-shot user prompt which needs to be fit into a template. This prompt should only be used to probe model state. 
@@ -131,26 +141,37 @@ def no_game_seq_logit_prompt(option_set: list[str],
     :param option_set: A LIST of pronoun options. MUST be ordered to measure contextuality.
     :param free_sentence: Sentence with a token BLANK in it. 
     :param fixed_sentence: Additional sentence to test the effect of adding context.
+    :param system: If true, a system prompt will be output
+    :param user: If true, a user prompt will be output
+    :param assistant: If true, a assistant prompt will be output
     :return: user prompt
     """
 
-    SYSTEM_PROMPT = ("Below you will find a passage in *bold* which contains precisely one instance of "
-                     "the term BLANK. "
-                     "Your task is to replace BLANK with one of the options provided. "
-                     "The task is designed to be unambiguous, so please provide only one token for the blank and "
-                     "do not reorder the data. Do not repeat the sentence.")
+    if system:
+        SYSTEM_PROMPT = ("Below you will find a passage in *bold* which contains precisely one instance of "
+                         "the term BLANK. "
+                         "Your task is to replace BLANK with one of the options provided. "
+                         "The task is designed to be unambiguous, so please provide only one token for the blank and "
+                         "do not reorder the data. Do not repeat the sentence.")
+    else:
+        SYSTEM_PROMPT = None
     
     if fixed_sentence:
         sentence = fixed_sentence + " " + free_sentence
     else:
         sentence = free_sentence
 
+    if user:
+        USER_PROMPT = (f"Given this passage: *{sentence}*\n" 
+                       f"Replace BLANK with one of the options: {option_set}. "
+                       "Respond only in the following format {'BLANK': '<text>'}")
+    else:
+        USER_PROMPT = None
 
-    USER_PROMPT = (f"Given this passage: *{sentence}*\n" 
-                   f"Replace BLANK with one of the options: {option_set}. "
-                   "Respond only in the following format {'BLANK': '<text>'}")
-
-    ASSISTANT_PROMPT = "{'BLANK':'"
+    if assistant:
+        ASSISTANT_PROMPT = "{'BLANK':'"
+    else:
+        ASSISTANT_PROMPT = None
 
     return SYSTEM_PROMPT, USER_PROMPT, ASSISTANT_PROMPT
 
@@ -224,22 +245,38 @@ def game_prompt(options: list,
 
     return SYSTEM_PROMPT, USER_PROMPT, ASSISTANT_PROMPT
 
-def role_content_base(system: str,
-                      user: str,
-                      assistant:str):
+def role_content_base(system: str | None,
+                      user: str | None,
+                      assistant:str | None):
+
+    if system is not None:
+        system_dict = {
+                "role": "system",
+                "content": system
+            }
+    else:
+        system_dict = None
+
+    if user is not None:
+        user_dict = {
+                "role": "user",
+                "content": user
+            }
+    else:
+        user_dict = None
+
+    if assistant is not None:
+        assistant_dict = {
+                "role": "assistant",
+                "content": assistant
+            }
+    else:
+        assistant_dict = None
+
     message = [
-        {
-            "role": "system",
-            "content": system
-        },
-        {
-            "role": "user",
-            "content": user
-        },
-        {
-            "role": "assistant",
-            "content": assistant
-        }
+        system_dict,
+        user_dict,
+        assistant_dict
     ]
 
     return message
