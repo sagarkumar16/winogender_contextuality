@@ -102,7 +102,7 @@ class ModelProbs:
     #  - this will have to do all the first_id nonsense to make sure we are looking at the correct probs
     def get_completion(self,
                        prompt: str,
-                       continue_final_message: bool = True,
+                       max_new_tokens: int = 6,
                        **kwargs):
 
         """
@@ -117,7 +117,7 @@ class ModelProbs:
             'return_dict_in_generate': True,
             'output_hidden_states': True,
             'do_sample': True,
-            'max_new_tokens': 10,
+            'max_new_tokens': max_new_tokens,
             'temperature': 0.5,
             'top_k': 40
         }
@@ -136,7 +136,7 @@ class ModelProbs:
 
         else:
             inputs = (self.tokenizer.apply_chat_template(prompt, return_tensors="pt",
-                                                         continue_final_message=continue_final_message)
+                                                         continue_final_message=True)
                       .to(self.gpu))
 
             outputs = self.model.generate(inputs, **generation_args)

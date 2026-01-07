@@ -172,7 +172,6 @@ def no_game_seq_logit_prompt(option_set: list[str],
         ASSISTANT_PROMPT = "{'BLANK':'"
     else:
         ASSISTANT_PROMPT = None
-        USER_PROMPT = USER_PROMPT + "\n {'BLANK':"
 
     return SYSTEM_PROMPT, USER_PROMPT, ASSISTANT_PROMPT
 
