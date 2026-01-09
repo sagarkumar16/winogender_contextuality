@@ -283,6 +283,7 @@ def generate_one_pronoun(
                                     json_output = {'BLANK': 'None'}
                                     logger.warning(
                                         f"Error {e} for output: {decoded_output_full}. Error count {error_count}")
+                                    continue
                             else:
                                 decoded_output = mp.tokenizer.decode(
                                     output.sequences[0][input_len - 5:],
