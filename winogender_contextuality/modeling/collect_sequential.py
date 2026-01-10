@@ -277,7 +277,7 @@ def generate_one_pronoun(
                                     skip_special_tokens=True
                                 )
                                 try:
-                                    decoded_output = decoded_output_full.split("```")[-2]
+                                    decoded_output = decoded_output_full.split("model")[-1]
                                 except Exception as e:
                                     error_count += 1
                                     json_output = {'BLANK': 'None'}
