@@ -599,11 +599,13 @@ def generate_one_null_context(mode: str,
                             skip_special_tokens=True
                         )
                         try:
-                            decoded_output = decoded_output_full.split("```")[-2]
+                            decoded_output = decoded_output_full.split("model")[-1]
                         except Exception as e:
                             error_count += 1
                             json_output = {'BLANK': 'None'}
-                            logger.warning(f"Error {e} for output: {decoded_output_full}. Error count {error_count}")
+                            logger.warning(
+                                f"Error {e} for output: {decoded_output_full}. Error count {error_count}")
+                            decoded_output = "{'BLANK': 'None'}"
                     else:
                         decoded_output = mp.tokenizer.decode(
                             output.sequences[0][input_len - 5:],
