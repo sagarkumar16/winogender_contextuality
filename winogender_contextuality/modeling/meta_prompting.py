@@ -138,6 +138,7 @@ def run_metaprompting(
         output_dir: pathlib.Path = INTERIM_DATA_DIR,
         start: int = 0,
         end: int | None = None,                 # inclusive
+        num_runs: int = 1,
         input_file: str = "wino_pairs.tsv",
         output_file: pathlib.Path | None = None # single, shared output file
 ):
@@ -242,67 +243,68 @@ def run_metaprompting(
 
                         ## TODO: Turn this into metaprompt
                         for question in questions:
-                            prompt = pr.role_content_base(*metaprompt_template(
-                                option_set=p_list,
-                                free_sentence=s2,
-                                fixed_sentence=first_sentence_filled,
-                                question=question,
-                                blank_role=blank_role,
-                                other_role=other_role
-                            ))
+                            for run in range(num_runs):
+                                prompt = pr.role_content_base(*metaprompt_template(
+                                    option_set=p_list,
+                                    free_sentence=s2,
+                                    fixed_sentence=first_sentence_filled,
+                                    question=question,
+                                    blank_role=blank_role,
+                                    other_role=other_role
+                                ))
 
-                            inputs, output = mp.get_completion(
-                                prompt=prompt,
-                                temperature=temperature,
-                                max_new_tokens=12,
-                                continue_final_message=assistant
-                            )
+                                inputs, output = mp.get_completion(
+                                    prompt=prompt,
+                                    temperature=temperature,
+                                    max_new_tokens=12,
+                                    continue_final_message=assistant
+                                )
 
-                            input_len = inputs.shape[1]
-                            decoded_output = mp.tokenizer.decode(
-                                output.sequences[0][input_len - 6:],
-                                skip_special_tokens=True
-                            )
+                                input_len = inputs.shape[1]
+                                decoded_output = mp.tokenizer.decode(
+                                    output.sequences[0][input_len - 6:],
+                                    skip_special_tokens=True
+                                )
 
-                            try:
-                                #json_output = ast.literal_eval(decoded_output.replace("final", ""))
-                                json_output = ast.literal_eval(decoded_output)
-                            except Exception as e:
-                                error_count += 1
-                                json_output = {'ANSWER': 'None'}
-                                logger.warning(f"Error {e} for output: {decoded_output}. Error count {error_count}")
+                                try:
+                                    #json_output = ast.literal_eval(decoded_output.replace("final", ""))
+                                    json_output = ast.literal_eval(decoded_output)
+                                except Exception as e:
+                                    error_count += 1
+                                    json_output = {'ANSWER': 'None'}
+                                    logger.warning(f"Error {e} for output: {decoded_output}. Error count {error_count}")
 
-                            c = Context(
-                                sent_order=s_perm,
-                                pnoun_order=(first_pronoun, j),
-                                sentence_1=first_sentence_filled,
-                                sentence_2=s2,
-                                pronouns_1=p1,
-                                pronouns_2=p2,
-                                case_1=case1,
-                                case_2=case2
-                            )
+                                c = Context(
+                                    sent_order=s_perm,
+                                    pnoun_order=(first_pronoun, j),
+                                    sentence_1=first_sentence_filled,
+                                    sentence_2=s2,
+                                    pronouns_1=p1,
+                                    pronouns_2=p2,
+                                    case_1=case1,
+                                    case_2=case2
+                                )
 
-                            qa = MetaQA(
-                                index=idx,
-                                question=question,
-                                response=json_output['ANSWER'],
-                                answer=get_answers(q=question, priming_pnoun=first_pronoun, blank_role=blank_role),
-                                context=c
-                            )
+                                qa = MetaQA(
+                                    index=idx,
+                                    question=question,
+                                    response=json_output['ANSWER'],
+                                    answer=get_answers(q=question, priming_pnoun=first_pronoun, blank_role=blank_role),
+                                    context=c
+                                )
 
-                            measurements_idx.append(idx)
+                                measurements_idx.append(idx)
 
-                            # Append one-by-one to the single shared file
-                            with open(output_fpath, "a") as f:
-                                _lock_file(f)
-                                f.write(json.dumps(asdict(qa)) + "\n")
-                                f.flush()
-                                os.fsync(f.fileno())
-                                _unlock_file(f)
+                                # Append one-by-one to the single shared file
+                                with open(output_fpath, "a") as f:
+                                    _lock_file(f)
+                                    f.write(json.dumps(asdict(qa)) + "\n")
+                                    f.flush()
+                                    os.fsync(f.fileno())
+                                    _unlock_file(f)
 
-                            if error_count > 0:
-                                logger.warning(f"{error_count} errors.")
+                                if error_count > 0:
+                                    logger.warning(f"{error_count} errors.")
 
         logger.info(f"Successfully collected {idx}. Writing {len(measurements_idx)} measurements to {output_fpath}.")
 
