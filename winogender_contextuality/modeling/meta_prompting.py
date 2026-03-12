@@ -262,7 +262,7 @@ def run_metaprompting(
 
                                 input_len = inputs.shape[1]
                                 decoded_output = mp.tokenizer.decode(
-                                    output.sequences[0][input_len - 6:],
+                                    output.sequences[0][input_len - 5:],
                                     skip_special_tokens=True
                                 )
 
@@ -293,7 +293,7 @@ def run_metaprompting(
                                     context=c
                                 )
 
-                                measurements_idx.append(idx)
+                                measurements_idx.append(qa)
 
                                 # Append one-by-one to the single shared file
                                 with open(output_fpath, "a") as f:
