@@ -14,10 +14,10 @@ from winogender_contextuality.modeling.ModelProbs import *
 
 HF_KEY = os.environ.get("HF_KEY")
 
-def get_question(q:str,
+
+def get_question(q: str,
                  blank_role: str,
                  other_role: str):
-
     """
 
     :param q:
@@ -27,7 +27,6 @@ def get_question(q:str,
     """
 
     if q == 'anaphora':
-
         question = ("Answer saying who the pronoun replaced by BLANK is referring to. "
                     "Select from one of the following options: "
                     f"[{blank_role}, {other_role}].")
@@ -41,7 +40,7 @@ def get_question(q:str,
         question = (f"Answer saying the gender of the {other_role}. "
                     "Select from one of the following options: "
                     "[male, female, nonbinary].")
-    
+
     return question
 
 
@@ -75,6 +74,7 @@ def get_answers(q: str,
             return 'nonbinary'
         else:
             raise AttributeError("Invalid pronoun.")
+
 
 # TODO: how is this reconfigured to work for metaprompting?
 def metaprompt_template(option_set: list[str],
@@ -111,7 +111,7 @@ def metaprompt_template(option_set: list[str],
         sentence = free_sentence
 
     if user:
-        USER_PROMPT = (f"Given this passage: *{sentence}*\n" 
+        USER_PROMPT = (f"Given this passage: *{sentence}*\n"
                        f"One of two options may be chose to replace the BLANK: {option_set}"
                        "Given this information, please do the following: "
                        f"{get_question(question, blank_role, other_role)} "
@@ -126,6 +126,7 @@ def metaprompt_template(option_set: list[str],
 
     return SYSTEM_PROMPT, USER_PROMPT, ASSISTANT_PROMPT
 
+
 @app.command()
 def run_metaprompting(
         mode: str,
@@ -134,15 +135,14 @@ def run_metaprompting(
         questions: list[str] | None = None,
         quantized: bool = True,
         assistant: bool = True,
-        input_dir: pathlib.Path = INTERIM_DATA_DIR ,
+        input_dir: pathlib.Path = INTERIM_DATA_DIR,
         output_dir: pathlib.Path = INTERIM_DATA_DIR,
         start: int = 0,
-        end: int | None = None,                 # inclusive
+        end: int | None = None,  # inclusive
         num_runs: int = 1,
         input_file: str = "wino_pairs.tsv",
-        output_file: pathlib.Path | None = None # single, shared output file
+        output_file: pathlib.Path | None = None  # single, shared output file
 ):
-
     logger.add(LOG_DIR / f"metaprompting_{datetime.now()}.log")
 
     input_fpath = input_dir / input_file
@@ -161,18 +161,20 @@ def run_metaprompting(
         import fcntl
         def _lock_file(fh):
             fcntl.flock(fh, fcntl.LOCK_EX)
+
         def _unlock_file(fh):
             fcntl.flock(fh, fcntl.LOCK_UN)
     except Exception:
         def _lock_file(fh):
             pass
+
         def _unlock_file(fh):
             pass
 
     if questions is None:
         questions = ['anaphora', 'pos', 'other_gender']
 
-    #role_dict = get_role_dict()
+    # role_dict = get_role_dict()
     df = pd.read_csv(input_fpath, sep="\t")
 
     role_dict = {
@@ -202,7 +204,7 @@ def run_metaprompting(
     )
     mp.load_model()
 
-    pbar = tqdm(indices, desc=f"Metaprompting [{start}-{(end if end is not None else n_rows-1)}]")
+    pbar = tqdm(indices, desc=f"Metaprompting [{start}-{(end if end is not None else n_rows - 1)}]")
 
     for idx in pbar:
         measurements_idx = []
@@ -222,7 +224,7 @@ def run_metaprompting(
             case1 = cases[s_perm[0]]
             case2 = cases[s_perm[1]]
 
-            first_sentences = [s1] # redundancy for ease of code translation
+            first_sentences = [s1]  # redundancy for ease of code translation
 
             blank_role, other_role = role_dict.get(idx).get(direction)
 
@@ -261,13 +263,18 @@ def run_metaprompting(
                                 )
 
                                 input_len = inputs.shape[1]
-                                decoded_output = mp.tokenizer.decode(
-                                    output.sequences[0][input_len - 5:],
+
+                                # Model-agnostic decoding: extract only
+                                # newly generated tokens and prepend the
+                                # known assistant prefix
+                                new_tokens = output.sequences[0][input_len:]
+                                decoded_new = mp.tokenizer.decode(
+                                    new_tokens,
                                     skip_special_tokens=True
                                 )
+                                decoded_output = "{'ANSWER':'" + decoded_new
 
                                 try:
-                                    #json_output = ast.literal_eval(decoded_output.replace("final", ""))
                                     json_output = ast.literal_eval(decoded_output)
                                 except Exception as e:
                                     error_count += 1
@@ -307,6 +314,7 @@ def run_metaprompting(
                                     logger.warning(f"{error_count} errors.")
 
         logger.info(f"Successfully collected {idx}. Writing {len(measurements_idx)} measurements to {output_fpath}.")
+
 
 if __name__ == "__main__":
     app()
