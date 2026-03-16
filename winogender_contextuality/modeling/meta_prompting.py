@@ -264,15 +264,32 @@ def run_metaprompting(
 
                                 input_len = inputs.shape[1]
 
-                                # Model-agnostic decoding: extract only
-                                # newly generated tokens and prepend the
-                                # known assistant prefix
-                                new_tokens = output.sequences[0][input_len:]
-                                decoded_new = mp.tokenizer.decode(
-                                    new_tokens,
-                                    skip_special_tokens=True
-                                )
-                                decoded_output = "{'ANSWER':'" + decoded_new
+                                if "gemma" in model_name:
+                                    # Gemma doesn't support assistant
+                                    # prefill; decode full sequence and
+                                    # extract the model turn
+                                    decoded_output_full = mp.tokenizer.decode(
+                                        output.sequences[0],
+                                        skip_special_tokens=True
+                                    )
+                                    try:
+                                        decoded_output = decoded_output_full.split("model")[-1]
+                                    except Exception as e:
+                                        error_count += 1
+                                        json_output = {'ANSWER': 'None'}
+                                        logger.warning(
+                                            f"Error {e} for output: {decoded_output_full}. Error count {error_count}")
+                                        decoded_output = "{'ANSWER': 'None'}"
+                                else:
+                                    # For models that support assistant
+                                    # prefill, decode only the new tokens
+                                    # and prepend the known prefix
+                                    new_tokens = output.sequences[0][input_len:]
+                                    decoded_new = mp.tokenizer.decode(
+                                        new_tokens,
+                                        skip_special_tokens=True
+                                    )
+                                    decoded_output = "{'ANSWER':'" + decoded_new
 
                                 try:
                                     json_output = ast.literal_eval(decoded_output)
