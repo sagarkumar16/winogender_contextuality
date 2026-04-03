@@ -1,0 +1,85 @@
+occupation,matched_role_from_appendix_b,english_mean
+hygienist,dentalhygienists,0.57
+worker,construction workers,0.19
+clerk,clerks,0.42
+officer,,0.36
+machinist,heavy equipment operators,0.15
+dispatcher,,
+firefighter,firefighters,0.21
+inspector,,
+salesperson,salespersons,0.49
+mechanic,mechanics,0.2
+bartender,bartenders,0.47
+instructor,,
+paralegal,,
+cashier,cashiers,0.59
+teacher,child educators,0.67
+accountant,,0.37
+painter,artists,0.49
+doctor,,0.4
+investigator,,0.33
+physician,physicians,0.37
+nurse,nurses,0.74
+surgeon,surgeons,0.33
+secretary,secretaries,0.75
+scientist,researchscientists,0.42
+appraiser,,
+plumber,plumbers,0.21
+chef,,0.37
+engineer,engineers,0.24
+veterinarian,,0.5
+planner,weddingplanners,0.78
+janitor,janitors,0.27
+paramedic,,
+counselor,,0.69
+broker,,0.28
+educator,child educators,0.67
+lawyer,lawyers,0.41
+nutritionist,nutritionists,0.66
+technician,technicians,0.35
+practitioner,,
+supervisor,supervisors,0.45
+examiner,,
+programmer,,0.26
+administrator,heads of department,0.41
+librarian,librarians,0.67
+specialist,,
+chemist,chemists,0.46
+psychologist,clinical psychologists,0.58
+hairdresser,hairdressers,0.7
+dietitian,dieticians,0.65
+therapist,counseling psychologists,0.69
+electrician,electricians,0.21
+pharmacist,pharmacists,0.53
+architect,architects,0.36
+pathologist,,
+auditor,,
+advisor,,
+baker,bakers,0.49
+receptionist,receptionists,0.75
+carpenter,carpenters,0.25
+manager,managers,0.41
+student,students,0.55
+guest,,
+customer,customers,0.58
+patient,patients,0.52
+client,clients,0.51
+bystander,,
+homeowner,,
+buyer,,
+teenager,teenagers,0.52
+pedestrian,pedestrians,0.53
+victim,victims,0.63
+advisee,job seekers,0.43
+child,children,0.51
+employee, workers,0.42
+passenger,,
+resident,,
+visitor,hotel guests,0.49
+taxpayer,,
+witness,,
+undergraduate,students,0.55
+owner,,
+onlooker,,
+protester,,0.49
+intern,,
