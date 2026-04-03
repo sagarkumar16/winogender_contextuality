@@ -1,4 +1,4 @@
-# *Failure of contextual equivalence with large language models*
+# *Failure of contextual equivalence with large language models (2026)*
 
 <a target="_blank" href="https://cookiecutter-data-science.drivendata.org/">
     <img src="https://img.shields.io/badge/CCDS-Project%20template-328F97?logo=cookiecutter" />
@@ -11,8 +11,8 @@ Aiello, and Andrea Baronchelli.
 ### 1. Clone the Repository
 
 ```bash 
-git clone https://github.com/yourusername/your-project-name.git
-cd your-project-name
+git clone https://github.com/sagarkumar16/winogender_contextuality.git
+cd winogender_contextuality
 ``` 
 
 
