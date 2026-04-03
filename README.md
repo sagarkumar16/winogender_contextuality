@@ -1,10 +1,11 @@
-# winogender_contextuality
+# *Failure of contextual equivalence with large language models*
 
 <a target="_blank" href="https://cookiecutter-data-science.drivendata.org/">
     <img src="https://img.shields.io/badge/CCDS-Project%20template-328F97?logo=cookiecutter" />
 </a>
 
-Assessing contextuality in generative language models' resolution of gendered pronouns.
+All code used in production and necessary for replication for the manuscript which can be found whose preprint can be found [here](https://arxiv.org/abs/2603.23485), authored by Sagar Kumar, Ariel Flint, Luca Maria 
+Aiello, and Andrea Baronchelli.
 
 ## Getting Started
 ### 1. Clone the Repository
@@ -76,10 +77,14 @@ To collect data, you can run methods in ```collect_sequential.py``` directly, or
 Prompts should have an assistant role such that the first token generated is the BLANK which is being resolved. 
 
 ## Data Collection
-Data from models is collected by...
+Data collection proceeds by selcting the relevant function from 
+```winogender_contextuality/modeling/collect_sequential.py```. If using bash or slurm, see ```collect_batches.sh``` or 
+```collect_null.sh``` as examples. Because Gemma 3 models do not take an assistant prompt, ```collect_gemma_null.sh``` 
+is also provided as an example. 
 
 ## Data Analysis 
-Contextuality can be measured... 
+All code necessary to replicate the figures and findings reported in the manuscript can be found in 
+```notebooks/13-sk-paper-figures.ipynb```. 
 
 ## Project Organization 
 
@@ -99,10 +104,9 @@ Contextuality can be measured...
 ├── pyproject.toml     <- Project configuration file with package metadata for 
 │                         winogender_contextuality and configuration for tools like black
 │
-├── references         <- Data dictionaries, manuals, and all other explanatory materials.
-│
 ├── reports            <- Generated analysis as HTML, PDF, LaTeX, etc.
-│   └── figures        <- Generated graphics and figures to be used in reporting
+│   └── figures        <- Generated graphics and figures 
+│   └── PDFs           <- Generated reports and slideshows 
 │
 ├── requirements.txt   <- The requirements file for reproducing the analysis environment, e.g.
 │                         generated with `pip freeze > requirements.txt`
