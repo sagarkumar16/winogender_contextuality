@@ -33,7 +33,7 @@ source "$VENV_DIR/bin/activate"
 # pip install -r requirements.txt
 
 # --- Environment variables ---
-export HF_KEY="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"  
+export HF_KEY=""
 
 # --- Script arguments ---
 DEVICE="gpu"
