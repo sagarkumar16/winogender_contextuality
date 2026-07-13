@@ -17,7 +17,8 @@
       "Bash(git diff *)",
       "Bash(chmod +x revisions/slurm/*.sh)",
       "Bash(git add *)",
-      "Bash(git commit -q -m ' *)"
+      "Bash(git commit -q -m ' *)",
+      "Bash(bash -n revisions/slurm/run_analyses.sh)"
     ]
   }
 }
