@@ -66,12 +66,18 @@ hardcoding it — see the warning below.
 
 ---
 
-## Read this first: three defects found in the existing analysis code
+## Read this first: six defects found in the existing analysis code
 
-Found while building the comparison. **Defects 1 and 2 are now FIXED** in
-`winogender_contextuality/modeling/contextuality.py` (commit "Fix calculate_sentence_dc_fraction");
-defect 3 is a property of already-collected data files and cannot be fixed by code. All three
-affect published numbers, so all three need a decision before the response letter goes out.
+Found while building the comparison. **Five are now FIXED** in
+`winogender_contextuality/modeling/contextuality.py`; defect 3 is a property of
+already-collected data files and cannot be fixed by code. All of them affect published numbers,
+so all of them need a decision before the response letter goes out.
+
+Every fixed function is cross-checked against `revisions/cbd.py`, an independent implementation
+written from the CbD definitions rather than from the original code
+(`revisions/tests/test_package_cbd_fixes.py`).
+
+**Bottom line: every ΔC in the paper needs re-running.**
 
 ### 1. The steering ΔC used the wrong marginal — FIXED (this changes reported ΔC)
 
@@ -142,23 +148,51 @@ logit-based null quantity can be computed from the existing files — the fix ha
 collection time, and only for data collected from now on. Experiment 3 is therefore reported on
 generation counts, and our new referent-null collector stores proper 2-vectors.
 
-### Still outstanding — NOT fixed, because you only asked for `calculate_sentence_dc_fraction`
+### 4. `calculate_sentence_nc_fraction` had the identical `(V1, V2)` defect — FIXED
 
-These are real, and I left them alone deliberately. Say the word and I'll do them too.
+The two-pronoun sibling of defect 1, in the same file: its forward correlation used `V2` (the
+sentence-2 marginal of the *reverse* context) in place of `W2`. Same error, same consequences.
+(The reverse term was already correct — `cbd_correlation` is symmetric in its first two
+arguments.)
 
-* **`calculate_sentence_nc_fraction` has the identical `(V1, V2)` defect** as defect 1, in the
-  same file (it is the two-pronoun sibling of the function I fixed). If any number in the paper
-  comes from it, it is wrong in the same way.
-* `cbd_s1_4cycle` includes the term `|w + x - y - z|`, which has an **even** number of minus
-  signs. The CbD `s1` maximises only over **odd**-sign patterns; the correct fourth term is
-  `|w + x - y + z|`. This affects `calculate_pronouns_nc_fraction` / `measure_contextuality.py`.
-* `pronoun_context_array` orders its four contexts `(0,0), (0,1), (1,0), (1,1)`. A rank-4 cyclic
-  system requires *consecutive contexts to share a content variable*, and `(0,1)` and `(1,0)`
-  share none. `joint_measurement.joint_rank4` uses the correct cycle order
-  `(0,0), (1,0), (1,1), (0,1)`.
+### 5. `cbd_s1_4cycle` maximised over an inadmissible sign pattern — FIXED
+
+CbD's `s1` maximises only over sign vectors with an **odd** number of minus signs. The term
+`|w + x - y - z|` has two. It was standing in for the admissible `|w + x - y + z|`, so the
+function made **two errors at once**:
+
+| | frequency on random correlation vectors |
+|---|---|
+| included the inadmissible `\|w+x-y-z\|` → **overstated** s1 | 12.6% |
+| dropped the admissible `\|w+x-y+z\|` → **understated** s1 | 21.9% |
+| exactly right | 65.5% |
+
+Mean \|error\| when wrong: 0.555. Since `ΔC = s1 − 2 − disturbance`, the old version could both
+**report contextuality where there is none** and **miss real contextuality**. This feeds
+`calculate_pronouns_nc_fraction` and `measure_contextuality.py`.
+
+### 6. The rank-4 system was not walked in cycle order — FIXED (in the right place)
+
+A rank-4 cyclic system requires *consecutive contexts to share a content variable*.
+`calculate_pronouns_nc_fraction` consumed its four contexts in the order
+`(0,0), (0,1), (1,0), (1,1)`, which places `(0,1)` next to `(1,0)` — two contexts that share
+none — so the disturbance terms were paired with the wrong contexts.
+
+**The fix belongs in the CbD function, not in `pronoun_context_array`.** That array's product
+ordering is *correct* for the sheaf/LP code: `MeasurementScenario.incidence_matrix` is built
+consistently with it, and `check_feasibility` / `calculate_contextual_fraction_abramsky` depend
+on it. Reordering the array would have silently broken the contextual-fraction computation. So
+`calculate_pronouns_nc_fraction` now reindexes into cycle order `(0,0), (1,0), (1,1), (0,1)`
+internally, and swaps the two marginals in the contexts where the lower-indexed content variable
+is the sentence-2 pronoun. (The correlation is symmetric in its marginals, so only the
+disturbance pairing changes.)
+
+### Still outstanding — not a CbD defect, so left alone
+
 * `generate_two_pronouns` constructs `Context` without `case_1`/`case_2`, which are required
   fields, so it raises `TypeError` before writing a record. That is why Experiment 1 needed a
-  new joint collector rather than a call into the existing one.
+  new joint collector (`revisions/collect_joint.py`) rather than a call into the existing one.
+  The new collector supersedes it; fixing it is optional.
 
 ### What `delta_c_steering_published` means now
 

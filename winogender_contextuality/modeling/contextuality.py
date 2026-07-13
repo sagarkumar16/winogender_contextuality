@@ -219,8 +219,19 @@ def cbd_correlation(px: float,
     return 4*pxy - 2*px - 2*py + 1
 
 def cbd_s1_4cycle(w,x,y,z):
+    """
+    The s1 term of a cyclic system of rank 4 (Dzhafarov & Kujala):
+
+        s1 = max over sign vectors with an ODD number of -1s of  sum_i (sign_i * x_i)
+
+    For n = 4 the odd-sign vectors come in +/- pairs, so the maximum over all eight of them is
+    the maximum of the absolute values of the four one-minus-sign patterns.
+
+    NOTE: the term |w + x - y - z| has TWO minus signs (even), so it is not admissible; it was
+    used here in place of |w + x - y + z| and could overstate s1, and hence delta_c.
+    """
     term1 = abs(w+x+y-z)
-    term2 = abs(w+x-y-z)
+    term2 = abs(w+x-y+z)
     term3 = abs(w-x+y+z)
     term4 = abs(-w+x+y+z)
     return max(term1,term2,term3,term4)
@@ -283,37 +294,65 @@ def calculate_pronouns_nc_fraction(
 ) -> float:
 
     """
-    Calculates the noncontextual fraction, as per Dzhafarov for a 4-cycle situation with data structured as a list of
-    Measurement objects.
+    Degree of contextuality (CbD) for the rank-4 cyclic system over pronoun-option orders.
 
-    :param arr: MeasurementScenario.scenario.values array
+    The four content variables are
+        q0 = sentence-1 pronoun, options presented male-first
+        q1 = sentence-2 pronoun, male-first
+        q2 = sentence-1 pronoun, female-first
+        q3 = sentence-2 pronoun, female-first
+    and a cyclic system of rank 4 requires context i to measure (q_i, q_{i+1 mod 4}), i.e.
+    CONSECUTIVE CONTEXTS MUST SHARE A CONTENT VARIABLE:
+
+        c0 = (q0, q1) = options (0,0)     c1 = (q1, q2) = options (1,0)
+        c2 = (q2, q3) = options (1,1)     c3 = (q3, q0) = options (0,1)
+
+    `arr` arrives in the order MeasurementScenario uses -- the product order
+    (0,0), (0,1), (1,0), (1,1) -- which is correct for the sheaf/linear-programming code but is
+    NOT a cycle: it places (0,1) next to (1,0), two contexts that share no content variable.
+    Consuming it row-by-row as if it were a cycle mispairs the disturbance terms. We therefore
+    reindex into cycle order here rather than changing the array, which the sheaf code depends on.
+
+    In contexts c1 and c3 the lower-indexed content variable is the SECOND-sentence pronoun, so
+    the roles of the two marginals swap. The correlation is symmetric in its marginals and so is
+    unaffected; only the disturbance pairing changes.
+
+    :param arr: MeasurementScenario.scenario.values array, rows in product order
+                (0,0), (0,1), (1,0), (1,1)
+    :return: delta_c; the system is contextual iff delta_c > 0
     """
 
+    # product-order row index -> (cycle position, swap the two marginals?)
+    # (0,0) -> row 0, (0,1) -> row 1, (1,0) -> row 2, (1,1) -> row 3
+    cycle = [(0, False),   # c0 = options (0,0): first = q0 (sentence 1), second = q1
+             (2, True),    # c1 = options (1,0): first = q1 (sentence 2), second = q2
+             (3, False),   # c2 = options (1,1): first = q2 (sentence 1), second = q3
+             (1, True)]    # c3 = options (0,1): first = q3 (sentence 2), second = q0
+
     correlations = []
-    vs = []
-    ws = []
+    firsts = []
+    seconds = []
 
-    for row in arr:
-        # marginals
-        dzhafarov_arr = row.reshape(2,2)
-        px = np.sum(dzhafarov_arr, axis=1)[1] # indexing on the basis of index 1 (female pronoun probability)
-        py = np.sum(dzhafarov_arr, axis=0)[1]
-        pxy = dzhafarov_arr[1,1]
+    for row_idx, swap in cycle:
+        dzhafarov_arr = arr[row_idx].reshape(2, 2)
+        # index 1 = female pronoun probability
+        px = np.sum(dzhafarov_arr, axis=1)[1]   # sentence-1 pronoun marginal
+        py = np.sum(dzhafarov_arr, axis=0)[1]   # sentence-2 pronoun marginal
+        pxy = dzhafarov_arr[1, 1]
 
-        V1 = cbd_expectation(px)
-        W2 = cbd_expectation(py)
-        V1W2 = cbd_correlation(px,py,pxy)
+        # cbd_correlation is symmetric in px and py, so the swap does not touch it
+        correlations.append(cbd_correlation(px, py, pxy))
 
-        correlations.append(V1W2)
-        vs.append(V1)
-        ws.append(W2)
+        p_first, p_second = (py, px) if swap else (px, py)
+        firsts.append(cbd_expectation(p_first))
+        seconds.append(cbd_expectation(p_second))
 
     # Calculating the S1 term
     s1_term = cbd_s1_4cycle(*correlations)
 
-    # Calculating the sum of differences
-    rotated_ws = [ws[-1]]+ws[:-1]
-    sum_term = np.sum([abs(v-w) for v,w in zip(vs,rotated_ws)])
+    # Inconsistent connectedness: content variable q_i is the FIRST of context i and the SECOND
+    # of context i-1, so each term compares its two contexts.
+    sum_term = np.sum([abs(firsts[i] - seconds[(i - 1) % 4]) for i in range(4)])
 
     delta_c = s1_term - 2 - sum_term
 
@@ -451,10 +490,19 @@ def sentence_order_single_results(idx: int,
 def calculate_sentence_nc_fraction(data_dict: dict) -> float:
 
     """
-    Calculates noncontextual fraction based on the output from sentence_order_results()
-    
+    Degree of contextuality (CbD, cyclic system of rank 2) from the output of
+    sentence_order_results(), i.e. from JOINT two-pronoun measurements.
+
+    Content variables: V = the sentence-1 pronoun, W = the sentence-2 pronoun. Contexts: the two
+    sentence orders. sentence_order_results() already remaps BLANK1/BLANK2 so that 'pnoun_1'
+    always refers to sentence 1 in both orders.
+
+        delta_c = |<V W>_fwd - <V W>_rev| - |<V>_fwd - <V>_rev| - |<W>_rev - <W>_fwd|
+
+    contextual iff delta_c > 0.
+
     :param data_dict: output of sentence_order_results()
-    :return: noncontextual fraction
+    :return: delta_c
     """
     C1_size = len(data_dict['forward']['pnoun_1'])
     C2_size = len(data_dict['reverse']['pnoun_1'])
@@ -481,8 +529,12 @@ def calculate_sentence_nc_fraction(data_dict: dict) -> float:
     count_c2 = sum(1 for x, y in reverse_trials if x == target_r[0] and y == target_r[1])
     V2W1 = count_c2 / C2_size
 
+    # Each correlation uses the two marginals OF ITS OWN CONTEXT: (V1, W2) forward and
+    # (W1, V2) reverse. The forward term previously used V2 -- the sentence-2 marginal of the
+    # REVERSE context -- in place of W2. cbd_correlation is symmetric in its first two
+    # arguments, so the reverse term was already correct.
     delta_c = (
-            abs(cbd_correlation(V1, V2, V1W2) - cbd_correlation(V2, W1, V2W1))
+            abs(cbd_correlation(V1, W2, V1W2) - cbd_correlation(W1, V2, V2W1))
             - (abs(cbd_expectation(V1) - cbd_expectation(W1))
                + abs(cbd_expectation(V2) - cbd_expectation(W2)))
     )
