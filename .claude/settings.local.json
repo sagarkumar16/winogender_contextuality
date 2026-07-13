@@ -20,7 +20,8 @@
       "Bash(git commit -q -m ' *)",
       "Bash(bash -n revisions/slurm/run_analyses.sh)",
       "Bash(./wcvenv/bin/python -m pytest revisions/tests -v --junitxml=revisions/outputs/tests/pytest_report.xml)",
-      "Bash(echo \"exit code: $?\")"
+      "Bash(echo \"exit code: $?\")",
+      "Bash(./wcvenv/bin/python -m pytest revisions/tests/test_package_cbd_fixes.py -q)"
     ]
   }
 }
