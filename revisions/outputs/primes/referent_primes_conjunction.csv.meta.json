@@ -1,0 +1,46 @@
+{
+  "timestamp_utc": "2026-07-13T13:05:50.390705+00:00",
+  "git_commit": "3af1a15432c4cba9e9592dd44a72fabc1afee627",
+  "argv": [
+    "/Users/sagarkumar/Research/winogender_contextuality/revisions/primes.py",
+    "--data-dir",
+    "data/interim",
+    "--style",
+    "conjunction"
+  ],
+  "seed": 20260713,
+  "libraries": {
+    "python": "3.12.2",
+    "platform": "macOS-15.5-arm64-arm-64bit",
+    "numpy": "2.3.1",
+    "pandas": "2.3.0",
+    "scipy": "1.16.0",
+    "torch": "2.7.1",
+    "transformers": "4.53.0",
+    "statsmodels": "0.14.6",
+    "xarray": "2025.7.1"
+  },
+  "experiment": "3_referent_only_null_primes",
+  "prime_style": "conjunction",
+  "input_file": "data/interim/winopron_pairs.tsv",
+  "max_index": 180,
+  "n_primes_with_personal_pronoun": 0,
+  "n_primes_with_inanimate_pronoun": 0,
+  "n_rows": 360,
+  "columns": [
+    "pair_index",
+    "free_slot",
+    "sent_order",
+    "template",
+    "differences",
+    "case",
+    "referent",
+    "prime",
+    "prime_referent",
+    "prime_case",
+    "prime_style",
+    "has_personal_pronoun",
+    "has_inanimate_pronoun"
+  ],
+  "results_file": "referent_primes_conjunction.csv"
+}
