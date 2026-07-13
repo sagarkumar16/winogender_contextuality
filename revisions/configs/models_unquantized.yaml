@@ -1,0 +1,44 @@
+# Experiment 2 (Reviewer 2, "Quantization"): the paper's models with unquantized weights.
+#
+# Same six models, same items/prompts/conditions -- only `quantized` changes. gemma-3-12b-it
+# was ALREADY run unquantized in the paper, so re-running it here is the sanity check that the
+# new pipeline reproduces the existing numbers:
+#
+#   python -m revisions.quantization_compare --sanity-check \
+#       --new  <new gemma unquantized ndjson> \
+#       --existing <published gemma ndjson>
+#
+# Its internal (logit-derived) probabilities are deterministic given the same weights and
+# prompt, so they must agree to numerical tolerance; generation frequencies are stochastic and
+# are checked against a binomial band instead.
+
+models:
+  - model_name: "google/gemma-3-12b-it"
+    shorthand: "gemma"
+    quantized: false          # SANITY CHECK: reproduces the published unquantized run
+    assistant: true
+
+  - model_name: "openai/gpt-oss-20b"
+    shorthand: "gpt"
+    quantized: false
+    assistant: true
+
+  - model_name: "meta-llama/Llama-3.2-1B-Instruct"
+    shorthand: "llama1b"
+    quantized: false
+    assistant: true
+
+  - model_name: "meta-llama/Llama-3.1-8B-Instruct"
+    shorthand: "llama8b"
+    quantized: false
+    assistant: true
+
+  - model_name: "microsoft/phi-4"
+    shorthand: "phi"
+    quantized: false
+    assistant: true
+
+  - model_name: "Qwen/Qwen2.5-7B-Instruct"
+    shorthand: "qwen"
+    quantized: false
+    assistant: true

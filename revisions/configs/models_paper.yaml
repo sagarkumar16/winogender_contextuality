@@ -1,0 +1,37 @@
+# The six models in the submitted paper, with the quantization setting each was run under.
+#
+# gemma-3-12b-it was run unquantized (see collect_null_gemma.sh, which passes --no-quantized);
+# the other five used the pipeline default, quantized=True (see collect_batches.sh).
+#
+# `quantized: true` selects the 4-bit bitsandbytes path in run_local.load_model.
+
+models:
+  - model_name: "google/gemma-3-12b-it"
+    shorthand: "gemma"
+    quantized: false          # already unquantized -> Experiment 2's sanity check
+    assistant: true
+
+  - model_name: "openai/gpt-oss-20b"
+    shorthand: "gpt"
+    quantized: true
+    assistant: true
+
+  - model_name: "meta-llama/Llama-3.2-1B-Instruct"
+    shorthand: "llama1b"
+    quantized: true
+    assistant: true
+
+  - model_name: "meta-llama/Llama-3.1-8B-Instruct"
+    shorthand: "llama8b"
+    quantized: true
+    assistant: true
+
+  - model_name: "microsoft/phi-4"
+    shorthand: "phi"
+    quantized: true
+    assistant: true
+
+  - model_name: "Qwen/Qwen2.5-7B-Instruct"
+    shorthand: "qwen"
+    quantized: true
+    assistant: true

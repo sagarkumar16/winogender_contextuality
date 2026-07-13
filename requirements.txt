@@ -27,3 +27,11 @@ ipykernel
 joypy
 protobuf
 sentencepiece
+
+# --- Added for the EMNLP revision experiments (revisions/) ---
+# Both are already imported by the existing package but were never declared:
+#   scipy       -- winogender_contextuality/modeling/contextuality.py (linprog, softmax)
+#   statsmodels -- winogender_contextuality/utils.py (proportion_confint)
+# Without statsmodels installed, `import winogender_contextuality.utils` fails outright.
+scipy
+statsmodels
