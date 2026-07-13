@@ -18,7 +18,9 @@
       "Bash(chmod +x revisions/slurm/*.sh)",
       "Bash(git add *)",
       "Bash(git commit -q -m ' *)",
-      "Bash(bash -n revisions/slurm/run_analyses.sh)"
+      "Bash(bash -n revisions/slurm/run_analyses.sh)",
+      "Bash(./wcvenv/bin/python -m pytest revisions/tests -v --junitxml=revisions/outputs/tests/pytest_report.xml)",
+      "Bash(echo \"exit code: $?\")"
     ]
   }
 }
