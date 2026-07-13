@@ -50,7 +50,6 @@ import numpy as np
 import pandas as pd
 from loguru import logger
 
-from revisions.cbd import context_stats_from_table, delta_c_rank2
 from revisions.common import (
     FemaleCounts,
     OUTPUTS_DIR,
@@ -172,45 +171,54 @@ def per_item_table(
     df = pd.DataFrame(rows)
 
     # ΔC is a property of the sentence *pair* (it needs both orders), not of a single slot.
+    # It is well defined ONLY for the contextual condition, where both content variables --
+    # the prime pronoun and the generated pronoun -- are actually measured.
     for idx in range(max_index):
         for condition in ("mfirst", "ffirst"):
             s = steering_item_stats(idx, primed_data, condition)
             df.loc[df["index"] == idx, f"delta_c_contextual_{condition}"] = s["delta_c_steering"]
 
-    # ΔC for the pronoun-free conditions: no prime pronoun varies, so the prime variable is
-    # constant and ΔC reduces to the disturbance between sentence orders. Computed from the
-    # 2x2 tables with the prime slot held at its single value.
+    # The pronoun-free conditions have no prime-pronoun variable, hence no cyclic system and no
+    # ΔC. See pronoun_free_disturbance(): we report NaN rather than an encoding artifact, plus
+    # the order-disturbance, which is well defined.
     for cond, data, tags in (("null", null_data, null_tags), ("refnull", refnull_data, refnull_tags)):
+        df[f"delta_c_{cond}"] = np.nan
+        df[f"delta_c_{cond}_note"] = "undefined: prime has no pronoun, so no second content variable"
+
         if not data:
             continue
+
         for idx in range(max_index):
             fwd = _null_condition_counts(data, null_row_for(idx, 2), tags)
             rev = _null_condition_counts(data, null_row_for(idx, 1), tags)
-            df.loc[df["index"] == idx, f"delta_c_{cond}"] = _pronoun_free_delta_c(fwd, rev)
+            df.loc[df["index"] == idx, f"disturbance_{cond}"] = pronoun_free_disturbance(fwd, rev)
 
     return df
 
 
-def _pronoun_free_delta_c(forward: FemaleCounts, reverse: FemaleCounts) -> float:
+def pronoun_free_disturbance(forward: FemaleCounts, reverse: FemaleCounts) -> float:
     """
-    ΔC for a condition whose prime carries no pronoun.
+    Order-dependence of a pronoun-free condition: |P(female | forward) - P(female | reverse)|.
 
-    The prime variable is degenerate (a single value), so it contributes no correlation and
-    the rank-2 ΔC collapses to -|<R_gen>_fwd - <R_gen>_rev|: pure disturbance, never positive.
-    Reporting it makes the point quantitatively -- a pronoun-free prime cannot produce
-    contextuality, only order-dependence -- and gives the magnitude of that order-dependence.
+    Why not ΔC. A CbD ΔC needs TWO jointly measured content variables per context. Under a
+    contextual prime the two are the prime pronoun and the generated pronoun. A prime with no
+    pronoun supplies only one: the "prime pronoun" variable does not exist, so there is no
+    cyclic system and ΔC is not defined for these conditions.
+
+    One can force a number out of the formula by encoding the constant prime as an outcome,
+    but the result depends on that arbitrary encoding -- calling the pronoun-free prime "male"
+    versus "female" changes ΔC (e.g. -1.2 vs -1.6 on the same counts) while every measured
+    quantity stays identical. We therefore report NaN for ΔC in these conditions rather than an
+    artifact, and report this disturbance instead, which is well defined.
+
+    This is not a gap in the analysis -- it IS the answer to Reviewer 3. A prime containing no
+    pronoun cannot induce contextuality in this design, by construction. What it can do is
+    shift the marginal, and that is exactly what the KL columns measure.
     """
     if not forward.total or not reverse.total:
         return float("nan")
 
-    # Degenerate prime: put all mass in the "male-prime" row; only the generated column varies.
-    fwd_table = np.array(
-        [[forward.total - forward.successes, forward.successes], [0.0, 0.0]], dtype=float
-    )
-    rev_table = np.array(
-        [[reverse.total - reverse.successes, reverse.successes], [0.0, 0.0]], dtype=float
-    )
-    return delta_c_rank2(context_stats_from_table(fwd_table), context_stats_from_table(rev_table))
+    return float(abs(forward.smoothed_prob - reverse.smoothed_prob))
 
 
 def summarise(df: pd.DataFrame) -> pd.DataFrame:
@@ -241,6 +249,17 @@ def summarise(df: pd.DataFrame) -> pd.DataFrame:
                 "mean_p_fem_unprimed": float(g["p_fem_unprimed"].mean()),
                 "mean_p_fem_null": float(g["p_fem_null"].mean()),
                 "mean_p_fem_refnull": float(g["p_fem_refnull"].mean()),
+                # ΔC is undefined for the pronoun-free conditions (see pronoun_free_disturbance);
+                # their order-dependence is reported as a disturbance instead.
+                "mean_delta_c_contextual_mfirst": float(g["delta_c_contextual_mfirst"].mean())
+                if "delta_c_contextual_mfirst" in g
+                else np.nan,
+                "mean_disturbance_null": float(g["disturbance_null"].mean())
+                if "disturbance_null" in g
+                else np.nan,
+                "mean_disturbance_refnull": float(g["disturbance_refnull"].mean())
+                if "disturbance_refnull" in g
+                else np.nan,
             }
         )
     return pd.DataFrame(out)

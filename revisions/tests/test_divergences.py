@@ -161,3 +161,56 @@ def test_null_and_refnull_records_are_distinguishable():
 
     assert {r["context"]["sent_order"][0] for r in null} == {"null_0"}
     assert {r["context"]["sent_order"][0] for r in refnull} == {"refnull"}
+
+
+# --------------------------------------------------------------------------------------
+# ΔC is undefined for a pronoun-free prime
+# --------------------------------------------------------------------------------------
+
+
+def test_delta_c_for_a_pronoun_free_prime_would_be_an_encoding_artifact():
+    """
+    Guard against reintroducing a ΔC for the null / referent-null conditions.
+
+    Those primes contain no pronoun, so the "prime pronoun" content variable does not exist and
+    there is no cyclic system. Forcing a number out of the rank-2 formula requires encoding the
+    constant prime as an outcome, and the answer then depends on that arbitrary choice: calling
+    the pronoun-free prime "male" rather than "female" changes ΔC even though every measured
+    quantity is identical. Hence we report NaN and a disturbance instead.
+    """
+    from revisions.cbd import context_stats_from_table, delta_c_rank2
+
+    a, b, n = 0.30, 0.60, 100
+
+    def delta_c_with_constant_prime_in_row(row: int) -> float:
+        def table(p):
+            t = np.zeros((2, 2))
+            t[row, 0], t[row, 1] = n * (1 - p), n * p
+            return t
+
+        return delta_c_rank2(context_stats_from_table(table(a)), context_stats_from_table(table(b)))
+
+    as_male = delta_c_with_constant_prime_in_row(0)
+    as_female = delta_c_with_constant_prime_in_row(1)
+
+    # Same data, different arbitrary encoding, different answer -> not a well-defined quantity.
+    assert as_male != pytest.approx(as_female)
+
+    # It is always <= 0 either way: a pronoun-free prime cannot be contextual.
+    assert as_male <= 0 and as_female <= 0
+
+
+def test_pronoun_free_disturbance_is_well_defined():
+    """The quantity we DO report: |P(f|forward) - P(f|reverse)|, invariant and interpretable."""
+    from revisions.referent_null import pronoun_free_disturbance
+
+    fwd = FemaleCounts(successes=30, total=100)
+    rev = FemaleCounts(successes=60, total=100)
+
+    expected = abs(fwd.smoothed_prob - rev.smoothed_prob)
+    assert pronoun_free_disturbance(fwd, rev) == pytest.approx(expected)
+
+    # Symmetric, non-negative, and zero when the two orders agree.
+    assert pronoun_free_disturbance(rev, fwd) == pytest.approx(expected)
+    assert pronoun_free_disturbance(fwd, fwd) == pytest.approx(0.0)
+    assert np.isnan(pronoun_free_disturbance(FemaleCounts(0, 0), rev))

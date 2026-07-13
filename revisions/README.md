@@ -288,17 +288,36 @@ the same estimator as the paper (`(k + 0.5)/(n + 1)`, in bits).
 like `kl_null`. If it is referent co-occurrence, `kl_refnull` should look like the contextual
 KLs. `refnull_over_contextual` in the summary is that ratio directly.
 
-ΔC is also reported for all three conditions. Note that a pronoun-free prime *cannot* be
-contextual: its prime variable is degenerate, so ΔC collapses to `-|disturbance| ≤ 0`. The
-number is reported anyway because it quantifies the residual order-dependence, and because
-making that argument quantitatively is the cleanest answer to the reviewer.
+### ΔC is *undefined* for the two pronoun-free conditions — and that is the answer
+
+The brief asked for ΔC on all three conditions. For conditions 2 and 3 that quantity does not
+exist, and reporting a number would be misleading.
+
+A CbD ΔC needs **two jointly measured content variables per context**. Under a contextual
+prime they are the prime pronoun and the generated pronoun. A prime with no pronoun supplies
+only one — there is no "prime pronoun" variable — so there is no cyclic system.
+
+You *can* force a number out of the formula by encoding the constant prime as an outcome, but
+the answer then depends on that arbitrary choice: on identical counts, calling the pronoun-free
+prime "male" gives ΔC = −1.2 and calling it "female" gives ΔC = −1.6, while every measured
+quantity is unchanged. (`test_divergences.py::test_delta_c_for_a_pronoun_free_prime_would_be_an_encoding_artifact`
+pins this, so the artifact cannot be reintroduced.)
+
+So `delta_c_null` and `delta_c_refnull` are emitted as `NaN` with a `_note` column, and we
+report `disturbance_null` / `disturbance_refnull` = `|P(f | forward) − P(f | reverse)|`
+instead, which is well defined and invariant.
+
+This is not a hole in the analysis — it is the cleanest possible answer to Reviewer 3: **a
+prime containing no pronoun cannot induce contextuality in this design, by construction.** All
+it can do is shift the marginal, which is exactly what the KL columns measure. ΔC remains
+well defined and is reported for the contextual condition (`delta_c_contextual_{mfirst,ffirst}`).
 
 **Outputs** (`revisions/outputs/referent_null/`)
 
 | file | contents |
 |---|---|
-| `three_condition_per_item.csv` | per (item, sentence order): counts, P(female) and KL for all three conditions plus the unprimed baseline; ΔC per condition; the prime text |
-| `three_condition_summary.csv/.tex` | per model: mean/median KL by condition, and the `refnull_over_contextual` / `null_over_contextual` ratios |
+| `three_condition_per_item.csv` | per (item, sentence order): counts, P(female) and KL for all three conditions plus the unprimed baseline; ΔC for the contextual condition; disturbance for the pronoun-free ones; the prime text |
+| `three_condition_summary.csv/.tex` | per model: mean/median KL by condition, the `refnull_over_contextual` / `null_over_contextual` ratios, and mean disturbance |
 | `three_conditions.pdf` | KL distributions by condition |
 
 **Row alignment.** Null-style runs are indexed per *sentence slot*, not per pair: row `2k` is
