@@ -1,8 +1,12 @@
 # EMNLP revision experiments
 
-Everything here is **additive**. No file outside `revisions/` was modified except
-`requirements.txt` (two dependencies appended, see below). The published analysis code is
-imported, never edited.
+Everything here started out **additive**, and the experiment code still is: it imports the
+published pipeline rather than duplicating it. Two files outside `revisions/` have since been
+modified, both at the user's request:
+
+* `requirements.txt` — two dependencies appended (`scipy`, `statsmodels`; see below).
+* `winogender_contextuality/modeling/contextuality.py` — **five CbD defects fixed.** These
+  change published numbers. Read "Read this first" below before using any ΔC from the paper.
 
 ```
 revisions/
@@ -20,7 +24,7 @@ revisions/
   collect_common.py         shared collection machinery
   configs/                  model sets (models_fast / models_paper / models_unquantized)
   slurm/                    cluster job scripts
-  tests/                    pytest suite (74 tests)
+  tests/                    pytest suite (169 tests)
   outputs/                  all results land here; nothing existing is overwritten
 ```
 
