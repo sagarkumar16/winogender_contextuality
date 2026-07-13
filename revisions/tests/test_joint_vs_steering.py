@@ -116,19 +116,15 @@ def test_qq_statistic_from_records():
     assert joint_item_stats(0, joint, "mfirst")["qq"] == pytest.approx(1.0)
 
 
-def test_agrees_with_published_estimator_where_they_coincide():
+def test_agrees_with_package_estimator_balanced_case():
     """
-    The published estimator builds its forward correlation from marginals (V1, V2) -- the prime
-    marginals of BOTH contexts -- where the CbD definition calls for (V1, W2): the prime marginal
-    and the *generation* marginal of the forward context. The two expressions coincide exactly
-    when V2 == W2, i.e. when the forward generation marginal equals the reverse prime marginal.
+    contextuality.calculate_sentence_dc_fraction and revisions.cbd are independent
+    implementations of the same rank-2 CbD estimator, reading the same records. They must agree.
 
-    Primes are balanced by design (V2 = 0.5), so we construct a forward context whose generation
-    marginal is also 0.5. There the published and corrected estimators must agree.
+    Balanced case: all four marginals 0.5. By hand, corr_fwd = 0, corr_rev = 1, Δ0 = 0, so
+    ΔC = |0 - 1| - 0 = 1.
     """
-    # forward: prime marginal 0.5, generation marginal 0.5
     fwd = np.array([[25.0, 25.0], [25.0, 25.0]])
-    # reverse: prime marginal 0.5, generation marginal 0.5
     rev = np.array([[50.0, 0.0], [0.0, 50.0]])
 
     _, steering = _build(fwd, rev)
@@ -136,33 +132,29 @@ def test_agrees_with_published_estimator_where_they_coincide():
     ours = steering_item_stats(0, steering, "mfirst")["delta_c_steering"]
 
     dd = sentence_order_single_results(0, steering, mode="generation", pnoun_order=0)
-    published = calculate_sentence_dc_fraction(dd, mode="generation")
+    package = calculate_sentence_dc_fraction(dd, mode="generation")
 
-    assert ours == pytest.approx(published)
-    assert ours == pytest.approx(1.0)  # |0 - 1| - 0
+    assert ours == pytest.approx(package)
+    assert ours == pytest.approx(1.0)
 
 
-def test_diverges_from_published_estimator_when_generation_marginal_is_skewed():
+def test_agrees_with_package_estimator_when_generation_marginal_is_skewed():
     """
-    The companion to the test above: when the forward generation marginal is NOT 0.5, the
-    published estimator's (V1, V2) substitution bites and the two disagree -- here they even
-    disagree about whether the item is contextual at all.
+    The case that used to expose the (V1, V2)-instead-of-(V1, W2) defect in
+    calculate_sentence_dc_fraction, kept as a regression guard now that it is fixed.
 
-    By hand, with the prime marginals balanced at 0.5 (as the design guarantees):
+    With the prime marginals balanced at 0.5 (as the design guarantees):
 
         forward: p_prime = 0.5, p_gen = 0.3, p_joint = 0.20
-            correct   <R_A R_B>_fwd = 4(0.20) - 2(0.5) - 2(0.3) + 1 = +0.2
-            published                = 4(0.20) - 2(0.5) - 2(0.5) + 1 = -0.2   <-- uses V2, not W2
+                 <R_A R_B>_fwd = 4(0.20) - 2(0.5) - 2(0.3) + 1 = +0.2
+                 (the old code used the reverse context's PRIME marginal here instead of this
+                  context's generation marginal, giving -0.2)
         reverse: p_prime = 0.5, p_gen = 0.5, p_joint = 0.40
-            both      <R_A R_B>_rev  = 4(0.40) - 2(0.5) - 2(0.5) + 1 = +0.6
-        Δ0 = |0 - 0| + |0 - (2*0.3 - 1)| = 0.4   (both agree on this)
+                 <R_A R_B>_rev = 4(0.40) - 2(0.5) - 2(0.5) + 1 = +0.6
+        Δ0 = |0 - 0| + |0 - (2*0.3 - 1)| = 0.4
 
-        correct   ΔC = |0.2 - 0.6| - 0.4 =  0.0   -> NOT contextual
-        published ΔC = |-0.2 - 0.6| - 0.4 = +0.4  -> contextual
-
-    This is a regression guard on the discrepancy documented in revisions/README.md: if someone
-    later fixes contextuality.py, this test starts failing, which is the signal to retire the
-    `delta_c_steering_published` column.
+        ΔC = |0.2 - 0.6| - 0.4 = 0.0  -> NOT contextual
+             (the old code returned +0.4 here, and called the item contextual)
     """
     fwd = np.array([[40.0, 10.0], [30.0, 20.0]])  # p_gen = 0.3, p_joint = 0.2
     rev = np.array([[40.0, 10.0], [10.0, 40.0]])  # p_gen = 0.5, p_joint = 0.4
@@ -172,14 +164,69 @@ def test_diverges_from_published_estimator_when_generation_marginal_is_skewed():
     ours = steering_item_stats(0, steering, "mfirst")["delta_c_steering"]
 
     dd = sentence_order_single_results(0, steering, mode="generation", pnoun_order=0)
-    published = calculate_sentence_dc_fraction(dd, mode="generation")
+    package = calculate_sentence_dc_fraction(dd, mode="generation")
 
-    assert ours == pytest.approx(0.0)
-    assert published == pytest.approx(0.4)
-    assert ours != pytest.approx(published)
+    assert package == pytest.approx(0.0)
+    assert ours == pytest.approx(package)
 
-    # The verdicts actually differ: the published estimator calls this item contextual.
-    # Note ours is exactly 0 in exact arithmetic but ~1e-16 in floating point, which is why
-    # verdicts go through is_contextual() rather than a bare `> 0`.
-    assert not is_contextual(ours)
-    assert is_contextual(published)
+    # ΔC is exactly 0 in exact arithmetic but ~1e-16 in floating point, which is why verdicts
+    # go through is_contextual() rather than a bare `> 0`.
+    assert not is_contextual(package)
+
+
+@pytest.mark.parametrize("seed", range(8))
+def test_package_and_revisions_estimators_agree_on_random_tables(seed):
+    """Two independent implementations, arbitrary data: they must not drift apart."""
+    rng = np.random.default_rng(seed)
+    fwd = rng.integers(1, 40, size=(2, 2)).astype(float)
+    rev = rng.integers(1, 40, size=(2, 2)).astype(float)
+
+    _, steering = _build(fwd, rev)
+
+    for condition, k in (("mfirst", 0), ("ffirst", 1)):
+        ours = steering_item_stats(0, steering, condition)["delta_c_steering"]
+
+        dd = sentence_order_single_results(0, steering, mode="generation", pnoun_order=k)
+        package = calculate_sentence_dc_fraction(dd, mode="generation")
+
+        assert ours == pytest.approx(package)
+
+
+def test_internal_mode_joint_probability_is_not_identically_zero():
+    """
+    The internal branch used to compare a logit VECTOR to a pronoun STRING when counting joint
+    outcomes, so its joint probability was 0 for every item and ΔC was not measuring a joint
+    distribution at all.
+
+    Here the female-primed trials carry P(female) = 0.9 and the male-primed trials P(female) =
+    0.1, with the prime balanced 50/50. The joint is then
+        V1W2 = P(prime=f) * P(free=f | prime=f) = 0.5 * 0.9 = 0.45
+    which the estimator must recover (rather than 0), and the forward marginal is
+        W2 = 0.5*0.9 + 0.5*0.1 = 0.5.
+    """
+    from revisions.fixtures import steering_records
+
+    records = []
+    for sent_order in (FORWARD, REVERSE):
+        # 50 female-primed trials at p=0.9, 50 male-primed at p=0.1
+        f_primed = np.array([[0.0, 0.0], [50.0, 0.0]])  # prime = female
+        m_primed = np.array([[50.0, 0.0], [0.0, 0.0]])  # prime = male
+        records += steering_records(0, f_primed, sent_order=sent_order, j=0, internal_p=0.9)
+        records += steering_records(0, m_primed, sent_order=sent_order, j=0, internal_p=0.1)
+
+    dd = sentence_order_single_results(0, records, mode="internal", pnoun_order=0)
+
+    # Recompute the pieces the estimator uses, to pin the joint specifically.
+    from winogender_contextuality.modeling.contextuality import _free_pronoun_prob
+
+    probs = [_free_pronoun_prob(z) for z in dd["forward"]["free_pnoun"]]
+    prime_target = dd["forward"]["pronouns"][0]
+    joint = np.mean(
+        [p if x == prime_target else 0.0 for x, p in zip(dd["forward"]["fixed_pnoun"], probs)]
+    )
+
+    assert np.mean(probs) == pytest.approx(0.5, abs=1e-6)  # marginal W2
+    assert joint == pytest.approx(0.45, abs=1e-6)  # NOT zero
+
+    # And ΔC itself is finite and well defined.
+    assert np.isfinite(calculate_sentence_dc_fraction(dd, mode="internal"))

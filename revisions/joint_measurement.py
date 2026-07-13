@@ -7,18 +7,19 @@ steering ΔC, per item and per condition.
 Three ΔC columns are emitted, and the distinction between them matters:
 
   delta_c_steering_published
-      Exactly what the paper reports: winogender_contextuality.modeling.contextuality.
-      calculate_sentence_dc_fraction, imported and called unmodified.
+      From the package estimator, contextuality.calculate_sentence_dc_fraction.
 
   delta_c_steering
-      The SAME steering data, scored with the same CbD rank-2 estimator used for the joint
-      column (revisions.cbd). This is the apples-to-apples baseline: it isolates the effect of
-      the *measurement protocol* (steering vs joint) rather than the effect of a change in
-      estimator. It differs from the published column because of two defects in the published
-      estimator, which we do not touch -- see revisions/README.md, "Discrepancies found":
-        (a) the forward correlation is built from marginals (V1, V2) instead of (V1, W2);
-        (b) in mode='internal' the joint count compares a logit vector to a pronoun string,
-            so the joint probability is identically zero.
+      The SAME steering data, scored with the CbD rank-2 estimator in revisions.cbd -- the same
+      one used for the joint column. This is the apples-to-apples baseline: it isolates the
+      effect of the *measurement protocol* (steering vs joint) rather than the effect of a
+      change in estimator.
+
+      These two columns used to disagree, because the package estimator built its forward
+      correlation from marginals (V1, V2) instead of (V1, W2). That is now fixed, so the two are
+      independent implementations of the same estimator and must agree -- a test asserts they do
+      on random tables. The pair is kept as a cross-check: divergence means one has drifted.
+      See revisions/README.md, "Read this first".
 
   delta_c_joint
       The joint-measurement ΔC: both pronouns generated in one pass (BLANK1/BLANK2), so both

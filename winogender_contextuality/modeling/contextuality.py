@@ -489,94 +489,99 @@ def calculate_sentence_nc_fraction(data_dict: dict) -> float:
 
     return delta_c
 
+def _free_pronoun_prob(logits) -> float:
+    """
+    P(female pronoun) for a single trial, from that trial's stored logits.
+
+    Logits are written by collect_sequential in canonical option order, so index 1 is the
+    female pronoun.
+    """
+    return float(softmax(np.asarray(logits, dtype=float).ravel())[1])
+
+
 def calculate_sentence_dc_fraction(data_dict: dict,
                                    mode: str) -> float:
     """
-    Calculates degree of contextuality based on the output from sentence_order_results()
+    Calculates degree of contextuality (CbD, cyclic system of rank 2) from the output of
+    sentence_order_single_results().
 
-    :param data_dict: output of sentence_order_results()
-    :param mode: 'internal' or 'generation'
-    :return: degree of contextuality
+    The system has two content variables -- the pronoun of sentence A and the pronoun of
+    sentence B -- and two contexts, the two sentence orders. In each context one variable is
+    the *prime* (fixed by the experimenter: V1 forward, V2 reverse) and the other is the
+    model's *free* response (W2 forward, W1 reverse). With +-1-valued outcomes,
+
+        delta_c = |<R_A R_B>_fwd - <R_A R_B>_rev|
+                  - |<R_A>_fwd - <R_A>_rev| - |<R_B>_rev - <R_B>_fwd|
+
+    and the system is contextual iff delta_c > 0.
+
+    :param data_dict: output of sentence_order_single_results()
+    :param mode: 'internal' (logit-derived probabilities) or 'generation' (empirical frequencies)
+    :return: degree of contextuality, or nan if either context has no trials
     """
 
+    if mode not in ('internal', 'generation'):
+        raise AttributeError("Mode must be either 'internal' or 'generation'")
+
+    fwd = data_dict['forward']
+    rev = data_dict['reverse']
+
+    C1_size = len(fwd['fixed_pnoun'])
+    C2_size = len(rev['fixed_pnoun'])
+
+    if C1_size == 0 or C2_size == 0 or not fwd['pronouns'] or not rev['pronouns']:
+        logger.warning("Empty context; cannot compute degree of contextuality.")
+        return np.nan
+
+    # sentence_order_single_results stores 'pronouns' as [sentence-A female, sentence-B female]
+    # *relative to the presentation order*, so in the forward context the prime's target is
+    # element 0 and the free sentence's is element 1, and in the reverse context they swap.
+    prime_target_f, free_target_f = fwd['pronouns'][0], fwd['pronouns'][1]
+    free_target_r, prime_target_r = rev['pronouns'][0], rev['pronouns'][1]
+
+    # Prime marginals: the prime is a string in both modes.
+    V1 = Counter(fwd['fixed_pnoun']).get(prime_target_f, 0) / C1_size
+    V2 = Counter(rev['fixed_pnoun']).get(prime_target_r, 0) / C2_size
+
     if mode == 'internal':
-        C1_size = len(data_dict['forward']['fixed_pnoun'])
-        C2_size = len(data_dict['reverse']['fixed_pnoun'])
+        # Each trial's logits give P(free = female | that trial's prime). The marginal is the
+        # mean of those per-trial probabilities, and the joint follows p(x,y) = p(y|x)p(x):
+        #     V1W2 = (1/N) * sum_t  1{prime_t = female} * p_t
+        fwd_probs = [_free_pronoun_prob(z) for z in fwd['free_pnoun']]
+        rev_probs = [_free_pronoun_prob(z) for z in rev['free_pnoun']]
 
-        V1_dict = Counter(data_dict['forward']['fixed_pnoun'])
-        W2 = softmax(np.mean(data_dict['forward']['free_pnoun'], axis=0))
-        W1 = softmax(np.mean(data_dict['reverse']['free_pnoun'], axis=0))
-        V2_dict = Counter(data_dict['reverse']['fixed_pnoun'])
+        W2 = float(np.mean(fwd_probs))
+        W1 = float(np.mean(rev_probs))
 
-        try:
-            target_f = data_dict['forward']['pronouns']
-            target_r = data_dict['reverse']['pronouns']
+        V1W2 = float(np.mean([
+            p if x == prime_target_f else 0.0
+            for x, p in zip(fwd['fixed_pnoun'], fwd_probs)
+        ]))
+        V2W1 = float(np.mean([
+            p if x == prime_target_r else 0.0
+            for x, p in zip(rev['fixed_pnoun'], rev_probs)
+        ]))
 
-            V1 = V1_dict.get(target_f[0], 0) / C1_size
-            W2 = W2[1]
-            W1 = W1[1]
-            V2 = V2_dict.get(target_r[1], 0) / C2_size
+    else:  # generation
+        W2 = Counter(fwd['free_pnoun']).get(free_target_f, 0) / C1_size
+        W1 = Counter(rev['free_pnoun']).get(free_target_r, 0) / C2_size
 
-        except Exception as e:
-            logger.error(f"Error calculating degree of contextuality: {e}")
+        V1W2 = sum(
+            1 for x, y in zip(fwd['fixed_pnoun'], fwd['free_pnoun'])
+            if x == prime_target_f and y == free_target_f
+        ) / C1_size
+        V2W1 = sum(
+            1 for x, y in zip(rev['fixed_pnoun'], rev['free_pnoun'])
+            if x == prime_target_r and y == free_target_r
+        ) / C2_size
 
-        # Compute joint probabilities
-        ## p(x,y) = p(y|x)p(x)
-        forward_trials = zip(data_dict['forward']['fixed_pnoun'], data_dict['forward']['free_pnoun'])
-        count_c1 = sum(1 for x, y in forward_trials if x == target_f[0] and y == target_f[1])
-        V1W2 = count_c1 / C1_size
+    # Each correlation is built from the two marginals OF ITS OWN CONTEXT: (V1, W2) forward and
+    # (V2, W1) reverse.
+    delta_c = (
+            abs(cbd_correlation(V1, W2, V1W2) - cbd_correlation(V2, W1, V2W1))
+            - (abs(cbd_expectation(V1) - cbd_expectation(W1))
+               + abs(cbd_expectation(V2) - cbd_expectation(W2)))
+    )
 
-        reverse_trials = zip(data_dict['reverse']['fixed_pnoun'], data_dict['reverse']['free_pnoun'])
-        count_c2 = sum(1 for x, y in reverse_trials if x == target_r[0] and y == target_r[1])
-        V2W1 = count_c2 / C2_size
-
-        delta_c = (
-                abs(cbd_correlation(V1, V2, V1W2) - cbd_correlation(V2, W1, V2W1))
-                - (abs(cbd_expectation(V1) - cbd_expectation(W1))
-                   + abs(cbd_expectation(V2) - cbd_expectation(W2)))
-        )
-
-        return delta_c
-
-    elif mode == 'generation':
-        C1_size = len(data_dict['forward']['fixed_pnoun'])
-        C2_size = len(data_dict['reverse']['fixed_pnoun'])
-
-        V1_dict = Counter(data_dict['forward']['fixed_pnoun'])
-        W2_dict = Counter(data_dict['forward']['free_pnoun'])
-        W1_dict = Counter(data_dict['reverse']['free_pnoun'])
-        V2_dict = Counter(data_dict['reverse']['fixed_pnoun'])
-
-        try:
-            target_f = data_dict['forward']['pronouns']
-            target_r = data_dict['reverse']['pronouns']
-
-            V1 = V1_dict.get(target_f[0], 0) / C1_size
-            W2 = W2_dict.get(target_f[1], 0) / C1_size
-            W1 = W1_dict.get(target_r[0], 0) / C2_size
-            V2 = V2_dict.get(target_r[1], 0) / C2_size
-
-        except Exception as e:
-            logger.error(f"Error calculating degree of contextuality: {e}")
-
-        # Compute joint probabilities
-        ## p(x,y) = p(y|x)p(x)
-        forward_trials = zip(data_dict['forward']['fixed_pnoun'], data_dict['forward']['free_pnoun'])
-        count_c1 = sum(1 for x, y in forward_trials if x == target_f[0] and y == target_f[1])
-        V1W2 = count_c1 / C1_size
-
-        reverse_trials = zip(data_dict['reverse']['fixed_pnoun'], data_dict['reverse']['free_pnoun'])
-        count_c2 = sum(1 for x, y in reverse_trials if x == target_r[0] and y == target_r[1])
-        V2W1 = count_c2 / C2_size
-
-        delta_c = (
-                abs(cbd_correlation(V1, V2, V1W2) - cbd_correlation(V2, W1, V2W1))
-                - (abs(cbd_expectation(V1) - cbd_expectation(W1))
-                   + abs(cbd_expectation(V2) - cbd_expectation(W2)))
-        )
-
-        return delta_c
-
-    else:
-        raise AttributeError
+    return float(delta_c)
 

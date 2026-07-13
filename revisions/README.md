@@ -68,36 +68,35 @@ hardcoding it — see the warning below.
 
 ## Read this first: three defects found in the existing analysis code
 
-These were found while building the comparison. **Nothing was changed** — the constraint was
-no edits to existing code — but they affect published numbers, so they need a decision before
-the response letter goes out.
+Found while building the comparison. **Defects 1 and 2 are now FIXED** in
+`winogender_contextuality/modeling/contextuality.py` (commit "Fix calculate_sentence_dc_fraction");
+defect 3 is a property of already-collected data files and cannot be fixed by code. All three
+affect published numbers, so all three need a decision before the response letter goes out.
 
-### 1. The steering ΔC uses the wrong marginal (affects reported ΔC)
+### 1. The steering ΔC used the wrong marginal — FIXED (this changes reported ΔC)
 
-`contextuality.calculate_sentence_dc_fraction` builds the forward correlation as
+`calculate_sentence_dc_fraction` built the forward correlation as
 
 ```python
 cbd_correlation(V1, V2, V1W2)     # V1 = P(prime=f | fwd),  V2 = P(prime=f | rev)
 ```
 
 CbD calls for the two marginals **of that context** — the prime marginal and the *generation*
-marginal, `(V1, W2)`. `V2` is the prime marginal of the *other* context. The reverse term is
-built correctly, and the inconsistent-connectedness term is correct.
+marginal, `(V1, W2)`. `V2` is the prime marginal of the *other* context. (The reverse term and
+the inconsistent-connectedness term were already correct.)
 
-The two expressions coincide only when `V2 == W2`. Primes are balanced by design so
-`V2 = 0.5`; therefore the published ΔC is correct exactly on items whose forward generation
-marginal happens to be 0.5, and wrong elsewhere. The error can flip the verdict:
-`revisions/tests/test_joint_vs_steering.py::test_diverges_from_published_estimator_when_generation_marginal_is_skewed`
-constructs an item where the correct ΔC is 0.0 (not contextual) and the published ΔC is +0.4
-(contextual).
+Because primes are balanced by design (`V1 = V2 = 0.5`), the old forward correlation was
+offset by exactly `E(W2) = 2·W2 − 1` — **the model's deviation from a 50/50 female-generation
+rate.** In a gender-bias experiment that deviation is systematically nonzero, so the error does
+not average out. On randomly drawn admissible tables the mean |ΔC shift| is ≈ 0.40 and the
+contextual/non-contextual verdict flips on ≈ 14% of items.
 
-`joint_measurement.py` therefore reports **both** `delta_c_steering_published` (the published
-estimator, imported unmodified) and `delta_c_steering` (the same data, same estimator as the
-joint column). Compare them before deciding what to put in the paper.
+**You must re-run the ΔC numbers.** Every ΔC in the paper computed with this function is
+affected, in a direction that correlates with the very bias being measured.
 
-### 2. `mode='internal'` ΔC has an identically-zero joint probability
+### 2. `mode='internal'` ΔC had an identically-zero joint probability — FIXED
 
-In the same function, the internal branch computes the joint count as
+The internal branch computed its joint count as
 
 ```python
 forward_trials = zip(data_dict['forward']['fixed_pnoun'],   # strings: 'he' / 'she'
@@ -105,11 +104,26 @@ forward_trials = zip(data_dict['forward']['fixed_pnoun'],   # strings: 'he' / 's
 count_c1 = sum(1 for x, y in forward_trials if x == target_f[0] and y == target_f[1])
 ```
 
-`y` is a logit vector and `target_f[1]` is a pronoun string, so `y == target_f[1]` is never
-true and `V1W2 == 0` for every item. Any ΔC computed with `mode='internal'` is therefore not
-measuring a joint distribution at all. The generation-mode numbers are unaffected.
+`y` is a logit vector and `target_f[1]` is a pronoun string, so the comparison was never true
+and `V1W2 == 0` for every item: internal-mode ΔC was not measuring a joint distribution at all.
+It now uses each trial's own logits, `p(x,y) = p(y|x)·p(x)`:
 
-### 3. The null runs store logits over the characters of "she"
+```python
+V1W2 = mean_t [ 1{prime_t = female} · softmax(logits_t)[1] ]
+```
+
+The forward marginal `W2` also changed, from `softmax(mean(logits))` to `mean(softmax(logits))`.
+The old form averages in *logit* space across two different prompts (male-primed and
+female-primed), which is not the marginal of the 50/50 prime mixture; the new form is, and it
+makes the marginal and joint mutually consistent. **Any internal-mode ΔC in the paper must be
+re-run.** Generation-mode numbers were unaffected by defect 2.
+
+While fixing this I also corrected the reverse context's joint count, which had its prime and
+free targets transposed. It was harmless in practice — both sentences of a pair always share a
+grammatical case, so the two target strings coincide — but it was load-bearing on that
+coincidence, and now it is not.
+
+### 3. The null runs store logits over the characters of "she" — NOT fixable in code
 
 `collect_sequential.generate_one_null_context` does:
 
@@ -124,23 +138,37 @@ a 2-vector over `['he','she']`. (`generate_one_pronoun` is fine: there `pronouns
 so `pronouns[1]` is the option list.)
 
 The published null analysis uses generation counts, so **its numbers stand**. But no
-logit-based null quantity can be computed from the existing files. Experiment 3 is therefore
-reported on generation counts, and our new referent-null collector stores proper 2-vectors.
+logit-based null quantity can be computed from the existing files — the fix has to happen at
+collection time, and only for data collected from now on. Experiment 3 is therefore reported on
+generation counts, and our new referent-null collector stores proper 2-vectors.
 
-### Also worth knowing
+### Still outstanding — NOT fixed, because you only asked for `calculate_sentence_dc_fraction`
 
-* `contextuality.cbd_s1_4cycle` includes the term `|w + x - y - z|`, which has an **even**
-  number of minus signs. The CbD `s1` maximises only over **odd**-sign patterns; the correct
-  fourth term is `|w + x - y + z|`. `revisions/cbd.py:s1_cyclic` enumerates the odd patterns
-  honestly. This affects `calculate_pronouns_nc_fraction` / `measure_contextuality.py`, which
-  the paper's figures do not appear to use.
-* `contextuality.pronoun_context_array` orders its four contexts `(0,0), (0,1), (1,0), (1,1)`.
-  A rank-4 cyclic system requires *consecutive contexts to share a content variable*, and
-  `(0,1)` and `(1,0)` share none. `joint_measurement.joint_rank4` uses the cycle order
+These are real, and I left them alone deliberately. Say the word and I'll do them too.
+
+* **`calculate_sentence_nc_fraction` has the identical `(V1, V2)` defect** as defect 1, in the
+  same file (it is the two-pronoun sibling of the function I fixed). If any number in the paper
+  comes from it, it is wrong in the same way.
+* `cbd_s1_4cycle` includes the term `|w + x - y - z|`, which has an **even** number of minus
+  signs. The CbD `s1` maximises only over **odd**-sign patterns; the correct fourth term is
+  `|w + x - y + z|`. This affects `calculate_pronouns_nc_fraction` / `measure_contextuality.py`.
+* `pronoun_context_array` orders its four contexts `(0,0), (0,1), (1,0), (1,1)`. A rank-4 cyclic
+  system requires *consecutive contexts to share a content variable*, and `(0,1)` and `(1,0)`
+  share none. `joint_measurement.joint_rank4` uses the correct cycle order
   `(0,0), (1,0), (1,1), (0,1)`.
-* `collect_sequential.generate_two_pronouns` constructs `Context` without `case_1`/`case_2`,
-  which are required fields, so it raises `TypeError` before writing a record. That is why
-  Experiment 1 needed a new joint collector rather than a call into the existing one.
+* `generate_two_pronouns` constructs `Context` without `case_1`/`case_2`, which are required
+  fields, so it raises `TypeError` before writing a record. That is why Experiment 1 needed a
+  new joint collector rather than a call into the existing one.
+
+### What `delta_c_steering_published` means now
+
+`joint_measurement.py` still emits both `delta_c_steering_published` (from
+`calculate_sentence_dc_fraction`) and `delta_c_steering` (from `revisions/cbd.py`). Before the
+fix these disagreed and the pair was diagnostic. Now that the package function is correct, the
+two are **independent implementations of the same estimator reading the same records**, so they
+must agree — and a test asserts they do, on random tables
+(`test_package_and_revisions_estimators_agree_on_random_tables`). The column is kept as a
+cross-check; if it ever diverges again, one of the two implementations has drifted.
 
 ---
 
