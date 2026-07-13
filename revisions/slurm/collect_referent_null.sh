@@ -35,7 +35,6 @@ TEMP="${TEMP:-0.5}"
 N_RUNS="${N_RUNS:-50}"
 SEED="${SEED:-20260713}"
 BATCH_SIZE="${BATCH_SIZE:-10}"
-N_ROWS="${N_ROWS:-360}"               # 180 pairs x 2 sentence slots
 STYLE="${STYLE:-repeated_np}"
 DATA_DIR="${DATA_DIR:-/scratch/kumar.sag/data/interim}"
 
@@ -47,6 +46,12 @@ if [[ ! -f "$PRIMES" ]]; then
   echo "Building referent-only primes ($STYLE)..."
   python -u -m revisions.primes --style "$STYLE" --data-dir "$DATA_DIR"
 fi
+
+# Derive the row count from the primes file rather than hardcoding it. The primes table is
+# indexed PER SENTENCE SLOT (2 rows per pair = 360), not per pair -- hardcoding a pair count
+# here would silently collect only half the data.
+N_ROWS="${N_ROWS:-$(($(wc -l < "$PRIMES") - 1))}"   # minus the header
+echo "Collecting $N_ROWS rows from $PRIMES"
 
 # gemma was run unquantized in the paper; pass --quantized for the models that were not.
 QUANT_FLAG=""

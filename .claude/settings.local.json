@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./wcvenv/bin/python -c ' *)",
+      "Bash(./wcvenv/bin/python -m pytest --version)",
+      "Bash(git checkout *)",
+      "Bash(./wcvenv/bin/pip install *)",
+      "Bash(./wcvenv/bin/python -c \"import winogender_contextuality.utils; print\\('package imports OK now'\\)\")",
+      "Bash(./wcvenv/bin/python -m revisions.primes --data-dir data/interim --preview 2)",
+      "Bash(./wcvenv/bin/python -m revisions.primes --data-dir data/interim --style conjunction --preview 2)",
+      "Bash(python3 -c ' *)",
+      "Bash(./wcvenv/bin/python -m pytest revisions/tests -q)",
+      "Bash(python3 -)",
+      "Bash(git reset *)",
+      "Bash(grep -v '^\\\\s*$')",
+      "Bash(grep -v '^\\\\s*$' requirements.txt)",
+      "Bash(git diff *)",
+      "Bash(chmod +x revisions/slurm/*.sh)",
+      "Bash(git add *)",
+      "Bash(git commit -q -m ' *)"
+    ]
+  }
+}

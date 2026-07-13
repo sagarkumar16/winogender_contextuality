@@ -44,12 +44,27 @@ BATCH_SIZE="${BATCH_SIZE:-10}"
 DATA_DIR="${DATA_DIR:-/scratch/kumar.sag/data/interim}"
 OUTPUT_DIR="${OUTPUT_DIR:-/scratch/kumar.sag/data/revisions/measurements}"
 
-# 181 pairs for the primed condition; 362 sentence rows for the null condition.
+# Row count comes from the input file, not a hardcoded constant. The two conditions are indexed
+# differently and it is easy to get wrong:
+#   primed -> winopron_pairs.tsv,   indexed per PAIR           (~181 rows)
+#   null   -> all_sentences_wp.csv, indexed per SENTENCE SLOT  (~2x that)
+# NB: the existing collect_null.sh hardcodes N_ROWS=181 for the per-sentence null input. If
+# that file really has ~362 rows, the published null runs covered only its first half -- worth
+# checking against the file on the cluster.
 if [[ "$CONDITION" == "null" ]]; then
-  N_ROWS="${N_ROWS:-362}"
+  INPUT_FILE="${INPUT_FILE:-all_sentences_wp.csv}"
 else
-  N_ROWS="${N_ROWS:-181}"
+  INPUT_FILE="${INPUT_FILE:-winopron_pairs.tsv}"
 fi
+
+INPUT_PATH="${DATA_DIR}/${INPUT_FILE}"
+if [[ ! -f "$INPUT_PATH" ]]; then
+  echo "ERROR: input file not found: $INPUT_PATH" >&2
+  exit 1
+fi
+
+N_ROWS="${N_ROWS:-$(($(wc -l < "$INPUT_PATH") - 1))}"   # minus the header
+echo "Condition=$CONDITION  input=$INPUT_FILE  rows=$N_ROWS"
 
 for START in $(seq 0 "$BATCH_SIZE" $((N_ROWS - 1))); do
   END=$((START + BATCH_SIZE - 1))
@@ -62,6 +77,7 @@ for START in $(seq 0 "$BATCH_SIZE" $((N_ROWS - 1))); do
     --seed "$SEED" \
     --start "$START" --end "$END" \
     --data-dir "$DATA_DIR" \
+    --input-file "$INPUT_FILE" \
     --output-dir "$OUTPUT_DIR"
 done
 

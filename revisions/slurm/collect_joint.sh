@@ -33,10 +33,24 @@ TEMP="${TEMP:-0.5}"
 SEED="${SEED:-20260713}"
 N_RUNS="${N_RUNS:-50}"
 BATCH_SIZE="${BATCH_SIZE:-10}"
-N_ROWS="${N_ROWS:-181}"
 DATA_DIR="${DATA_DIR:-/scratch/kumar.sag/data/interim}"
+INPUT_FILE="${INPUT_FILE:-winopron_pairs.tsv}"
+
+INPUT_PATH="${DATA_DIR}/${INPUT_FILE}"
+if [[ ! -f "$INPUT_PATH" ]]; then
+  echo "ERROR: input file not found: $INPUT_PATH" >&2
+  exit 1
+fi
+
+# Indexed per PAIR (both sentence orders are collected within each row).
+N_ROWS="${N_ROWS:-$(($(wc -l < "$INPUT_PATH") - 1))}"   # minus the header
 
 OUTPUT_FILE="/scratch/kumar.sag/data/interim/joint_measurements_${MODEL##*/}_${TEMP}_wp.ndjson"
+
+# Cost warning: the joint runs cross 2 sentence orders x 2 option orders (BLANK1) x 2 option
+# orders (BLANK2) = 8 cells per pair, vs 8 cells per pair in the primed runs -- but each cell
+# needs a full generation, and there is no logits-only shortcut. Budget accordingly.
+echo "Collecting $N_ROWS pairs from $INPUT_FILE ($N_RUNS runs x 8 cells each)"
 
 for START in $(seq 0 "$BATCH_SIZE" $((N_ROWS - 1))); do
   END=$((START + BATCH_SIZE - 1))
@@ -48,7 +62,7 @@ for START in $(seq 0 "$BATCH_SIZE" $((N_ROWS - 1))); do
     --seed "$SEED" \
     --start "$START" --end "$END" \
     --data-dir "$DATA_DIR" \
-    --input-file "winopron_pairs.tsv" \
+    --input-file "$INPUT_FILE" \
     --output-file "$OUTPUT_FILE"
 done
 

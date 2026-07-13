@@ -26,6 +26,44 @@ revisions/
 
 Run the tests with `pytest revisions/tests` (they need no GPU and no measurement data).
 
+## Running everything on the cluster
+
+```bash
+# 1. submit the GPU collection jobs (login node; NOT itself a SLURM job)
+bash revisions/slurm/submit_all.sh --dry-run     # see the plan first
+bash revisions/slurm/submit_all.sh
+
+#    ...or start small, which is what I'd do:
+EXPERIMENTS=joint MODELS="meta-llama/Llama-3.2-1B-Instruct" bash revisions/slurm/submit_all.sh
+
+# 2. once the jobs land, run all four analyses (CPU only, no SLURM)
+bash revisions/slurm/run_analyses.sh
+```
+
+`run_analyses.sh` skips any experiment whose inputs are not there yet and says so, so it is
+safe to re-run as jobs finish. Experiment 4 needs no new collection — it reads the published
+`one_pronoun_measurements_*.ndjson`.
+
+| script | what it does |
+|---|---|
+| `slurm/submit_all.sh` | sbatch's one job per (experiment × model); `--dry-run` prints the plan. Raises `--mem` for the unquantized arm (bf16 weights are much larger than 4-bit) |
+| `slurm/collect_joint.sh` | Exp 1 — joint two-pronoun measurements |
+| `slurm/collect_unquantized.sh` | Exp 2 — `CONDITION=primed\|null\|both` |
+| `slurm/collect_referent_null.sh` | Exp 3 — builds the primes if missing, then collects |
+| `slurm/run_analyses.sh` | all four analyses, CPU only |
+
+Each collection script takes its knobs from the environment (`MODEL`, `TEMP`, `N_RUNS`,
+`SEED`, `BATCH_SIZE`, `DATA_DIR`), defaulting to the paper's values (temperature 0.5,
+50 runs, batches of 10). They **derive the row count from the input file** rather than
+hardcoding it — see the warning below.
+
+> **Check this before launching the null runs.** The existing `collect_null.sh` hardcodes
+> `N_ROWS=181`, but its input `all_sentences_wp.csv` is indexed **per sentence**, not per pair,
+> and the paper notebook reads null data with `max_index=360`. If that file has ~362 rows, the
+> published null runs covered only its first half. I could not check — the file is not in the
+> repo. My scripts read the row count off the file, so they are not exposed to this, but the
+> existing null results may be.
+
 ---
 
 ## Read this first: three defects found in the existing analysis code
