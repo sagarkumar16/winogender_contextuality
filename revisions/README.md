@@ -5,9 +5,10 @@ original analysis code while preparing them.
 
 ```
 revisions/
-  cbd.py      independent CbD implementation, used to cross-check the package's ΔC functions
-  tests/      `pytest revisions/tests`: CbD cross-checks and the gpt-oss dequantization check
-              (no GPU or data needed)
+  build_refnull_inputs.py   builds the referent-only null primes (no GPU)
+  cbd.py                    independent CbD implementation, used to cross-check the package's ΔC functions
+  tests/                    `pytest revisions/tests`: CbD cross-checks, and the real collectors run
+                            against a fake model (needs torch + transformers, not a GPU or data)
 ```
 
 The collectors themselves are the package's own (`winogender_contextuality/modeling/collect_sequential.py`),
@@ -27,6 +28,19 @@ For the response letter: gpt-oss is *released* in MXFP4, and MXFP4 values are ex
 so the dequantized weights have the same values. This arm tests compute precision, not information lost to
 quantization. Notebook outputs: per-arm summary, item-level agreement (internal probabilities are
 deterministic, so their differences are the pure precision effect), `gpt_oss_quantization_scatter.pdf`.
+
+### Referent-only null primes
+
+Each sentence is primed with *"The {first} and the {second} were both present."*, naming its pair's two
+referents in the order the sentence mentions them, and no pronoun. The input,
+`all_sentences_wp_refnull.csv`, is built by `python -m revisions.build_refnull_inputs --pairs ... --output ...`
+in the same row order as `all_sentences_wp.csv`. Collection is the generic-null collector,
+`generate_one_null_context`, with `prime_column="prime"` and `tag="refnull"`, so prompts and loop are
+identical to the null runs; records are tagged `refnull_0`.
+
+The notebook reports KL against the same sentence's unprimed baseline next to `c_m`, `c_f`, `c_null1`,
+`c_null2`, with Wilcoxon tests of `c_ref` against the contextual and generic-null primes
+(`divergences/all_models_refnull.pdf`). ΔC is not defined for a prime without a pronoun, so there is none.
 
 ---
 

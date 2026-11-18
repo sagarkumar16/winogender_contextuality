@@ -512,10 +512,25 @@ def generate_one_null_context(mode: str,
                               start: int = 0,
                               end: int | None = None,                 # inclusive
                               input_file: str = "all_sentences.csv",
-                              output_file: pathlib.Path | None = None # single, shared output file
+                              output_file: pathlib.Path | None = None, # single, shared output file
+                              prime_column: str | None = None,
+                              tag: str = "null"
                               ):
+    """
+    Collect single-pronoun logits and completions for each sentence under a non-pronoun prime.
+
+    By default every sentence is run against each of the generic primes in
+    config.null_sentences. With prime_column set, each row is instead run against its own prime,
+    read from that column of the input file (e.g. the referent-only primes built by
+    revisions/build_refnull_inputs.py).
+
+    :param prime_column: input column holding a per-row prime; None uses config.null_sentences
+    :param tag: label for the prime condition in the output: sent_order is [f"{tag}_{i}", 0],
+                and the default output file name starts with f"{tag}_measurements"
+    """
 
     logger.add(LOG_DIR / f"data_collection_{datetime.now()}.log")
+
 
     input_fpath = input_dir / input_file
 
@@ -523,7 +538,7 @@ def generate_one_null_context(mode: str,
     if output_file is None:
         fname_model = model_name.split('/')[-1]
         dt = datetime.now().strftime('%H%M%d%m%y')
-        output_fpath = output_dir / f"null_measurements_{fname_model}_{temperature}_{dt}.ndjson"
+        output_fpath = output_dir / f"{tag}_measurements_{fname_model}_{temperature}_{dt}.ndjson"
     else:
         output_fpath = output_file
     output_fpath.parent.mkdir(parents=True, exist_ok=True)
@@ -571,7 +586,9 @@ def generate_one_null_context(mode: str,
         sentence = df.template[idx]
         case = df.case[idx]
 
-        for i,prime in enumerate(null_sentences):
+        primes = [df[prime_column][idx]] if prime_column else null_sentences
+
+        for i,prime in enumerate(primes):
             pronoun_lists = [pronouns, pronouns[::-1]]
             for n in range(2):
                 error_count = 0
@@ -628,13 +645,13 @@ def generate_one_null_context(mode: str,
                         logger.warning(f"Error {e} for output: {decoded_output}. Error count {error_count}")
 
                     c = Context(
-                        sent_order=[f"null_{i}", 0],
-                        pnoun_order=("null", n),
+                        sent_order=[f"{tag}_{i}", 0],
+                        pnoun_order=(tag, n),
                         sentence_1=prime,
                         sentence_2=sentence,
-                        pronouns_1="null",
+                        pronouns_1=tag,
                         pronouns_2=p_list,
-                        case_1="null",
+                        case_1=tag,
                         case_2=case
                     )
 
