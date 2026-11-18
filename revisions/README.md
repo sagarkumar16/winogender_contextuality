@@ -231,6 +231,12 @@ one aligner per table), and `get_null_divergences` refuses input that has not be
 
 **Re-run the divergence, stereotype-correlation and MI figures.**
 
+### 9. The temperature stereotype correlations read the wrong runs — FIXED
+
+The three cells that loop over `gpt_temps` indexed `all_gen_diffs[n]`, i.e. gpt, phi and gemma
+at T = 0.5, instead of `temp_gen_diffs[n]`. **Re-run the temperature stereotype-correlation
+figures.**
+
 ### Still outstanding — not a CbD defect, so left alone
 
 * `generate_two_pronouns` constructs `Context` without `case_1`/`case_2`, which are required
