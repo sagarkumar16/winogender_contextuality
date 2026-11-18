@@ -32,45 +32,18 @@ def no_game_prompt(options: list,
 
     return SYSTEM_PROMPT, USER_PROMPT, ASSISTANT_PROMPT
 
-def no_game_seq_prompt(option_sets: list[list[str]],
-                       sentences: list[str]):
-
-    """
-    Outputs a zero-shot user prompt which needs to be fit into a template. This prompt should be used with a generation head. 
-
-    :param option_sets: A LIST of LIST of pronoun options. MUST be ordered to measure contextuality.
-    :param sentences: Ordered list of two sentences, each with a BLANK
-    :return: user prompt
-    """
-
-    sent1, sent2 = sentences
-    sent1 = sent1.replace('BLANK', 'BLANK1')
-    sent2 = sent2.replace('BLANK', 'BLANK2')
-
-    SYSTEM_PROMPT = ("Below you will find a passage in *bold* which contains precisely one instance of "
-                     "the term BLANK1, and one instance of the term BLANK2. "
-                     "Your task is to replace BLANK1 and BLANK2 with one of the options provided for each. "
-                     "The task is designed to be unambiguous, so please provide only one token for each blank and "
-                     "do not reorder the data. Do not repeat the sentence.")
-
-    USER_PROMPT = (f"Given this passage: *{sent1} {sent2}*\n" 
-                   f"Replace BLANK1 with one of the options: {option_sets[0]}. " 
-                   f"Replace BLANK2 with one of the options: {option_sets[1]}. "
-                   "Respond only in the following format {'BLANK1': '<text>', 'BLANK2': '<text>'}"
-                   )
-
-    ASSISTANT_PROMPT = "{'BLANK1':'"
-
-    return SYSTEM_PROMPT, USER_PROMPT, ASSISTANT_PROMPT
+JOINT_ASSISTANT_PREFILL = "{'BLANK1':'"
 
 def no_game_seq_prompt(option_sets: list[list[str]],
-                       sentences: list[str]):
+                       sentences: list[str],
+                       assistant: bool = True):
 
     """
     Outputs a zero-shot user prompt which needs to be fit into a template. This prompt should be used with a generation head.
 
     :param option_sets: A LIST of LIST of pronoun options. MUST be ordered to measure contextuality.
     :param sentences: Ordered list of two sentences, each with a BLANK
+    :param assistant: If true, an assistant prefill (JOINT_ASSISTANT_PREFILL) will be output
     :return: user prompt
     """
 
@@ -90,7 +63,7 @@ def no_game_seq_prompt(option_sets: list[list[str]],
                    "Respond only in the following format {'BLANK1': '<text>', 'BLANK2': '<text>'}"
                    )
 
-    ASSISTANT_PROMPT = "{'BLANK1':'"
+    ASSISTANT_PROMPT = JOINT_ASSISTANT_PREFILL if assistant else None
 
     return SYSTEM_PROMPT, USER_PROMPT, ASSISTANT_PROMPT
 

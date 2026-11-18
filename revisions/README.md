@@ -42,6 +42,19 @@ The notebook reports KL against the same sentence's unprimed baseline next to `c
 `c_null2`, with Wilcoxon tests of `c_ref` against the contextual and generic-null primes
 (`divergences/all_models_refnull.pdf`). ΔC is not defined for a prime without a pronoun, so there is none.
 
+### Joint measurement
+
+`generate_two_pronouns` (rewritten; it used to raise `TypeError` before writing a record) shows both
+sentences as one passage, BLANK1 in the sentence shown first, and samples 50 completions filling both. The
+contexts are the two passage orders. Option orders default to the paper's two conditions, both blanks
+male-first or both female-first (`--option-orders all` adds the mixed ones). That is 180 pairs × 2 orders ×
+2 option orders × 50 = 36,000 completions per model. The decoder reads only the generated tokens, with the
+prefill put back in front, and takes the first `{...}`, so it does not depend on the tokenizer.
+
+The notebook scores it with the published estimator (`sentence_order_results` +
+`calculate_sentence_nc_fraction`) and compares it item by item with the steering ΔC
+(`joint_vs_steering_contextual_pairs.pdf`).
+
 ---
 
 ## Read this first: defects found in the existing code
@@ -212,9 +225,3 @@ one aligner per table), and `get_null_divergences` refuses input that has not be
 The three cells that loop over `gpt_temps` indexed `all_gen_diffs[n]`, i.e. gpt, phi and gemma
 at T = 0.5, instead of `temp_gen_diffs[n]`. **Re-run the temperature stereotype-correlation
 figures.**
-
-### Still outstanding — not a CbD defect, so left alone
-
-* `generate_two_pronouns` constructs `Context` without `case_1`/`case_2`, which are required
-  fields, so it raises `TypeError` before writing a record. It is the natural collector for the
-  joint-measurement experiment, so it gets fixed there.

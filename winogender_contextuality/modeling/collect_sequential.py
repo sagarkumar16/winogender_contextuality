@@ -1,4 +1,5 @@
 import os
+import re
 import json
 import pathlib
 import pandas as pd
@@ -16,129 +17,196 @@ app = typer.Typer()
 
 HF_KEY = os.environ.get("HF_KEY")
 
-# TODO: Batching currently not available for two pronoun generation
+JOINT_KEYS = ("BLANK1", "BLANK2")
+
+# Option orders for (BLANK1, BLANK2); 0 = male-first. 'matched' is the paper's two conditions.
+JOINT_OPTION_ORDERS = {
+    "matched": [(0, 0), (1, 1)],
+    "all": [(0, 0), (0, 1), (1, 0), (1, 1)],
+}
+
+
+def parse_joint_completion(text: str) -> dict:
+    """
+    Parses a two-blank completion into {'BLANK1': ..., 'BLANK2': ...}.
+
+    Takes the first {...} in the text, so a chat-turn header before the answer or trailing text
+    after it does not matter. Anything unparseable becomes {'BLANK1': 'None', 'BLANK2': 'None'},
+    which get_index() filters out.
+
+    :param text: decoded completion, including the assistant prefill if one was used
+    :return: dict with keys BLANK1 and BLANK2
+    """
+    match = re.search(r"\{[^{}]*\}", text)
+    try:
+        parsed = ast.literal_eval(match.group(0))
+        if isinstance(parsed, dict) and all(k in parsed for k in JOINT_KEYS):
+            return {k: str(parsed[k]).strip() for k in JOINT_KEYS}
+    except Exception:
+        pass
+    return {k: "None" for k in JOINT_KEYS}
+
+
 @app.command()
 def generate_two_pronouns(
         mode: str,
         model_name: str,
         temperature: float,
-        n_runs: int = 100,
+        n_runs: int = 50,
         quantized: bool = True,
-        input_fpath: pathlib.Path = INTERIM_DATA_DIR / "wino_pairs.tsv",
-        output_dir: pathlib.Path = INTERIM_DATA_DIR
+        assistant: bool = True,
+        option_orders: str = "matched",
+        input_dir: pathlib.Path = INTERIM_DATA_DIR,
+        output_dir: pathlib.Path = INTERIM_DATA_DIR,
+        start: int = 0,
+        end: int | None = None,                 # inclusive
+        input_file: str = "wino_pairs.tsv",
+        output_file: pathlib.Path | None = None # single, shared output file
 ):
-
     """
+    Collect JOINT measurements: both pronouns of a pair generated in a single completion.
 
-    :param input_fpath:
-    :param output_fpath: ndjson file
+    The two sentences are shown as one passage, BLANK1 in the sentence presented first and BLANK2
+    in the second, and the model fills both. The contexts are the two passage orders, so in
+    sent_order (1, 0) BLANK1 belongs to template_2. Unlike generate_one_pronoun, neither pronoun
+    is fixed by the experimenter.
+
     :param mode:
     :param model_name:
     :param temperature:
-    :param n_runs:
-    :return:
+    :param n_runs: sampled completions per (pair, sentence order, option order)
+    :param quantized:
+    :param assistant: whether to prefill the assistant turn with JOINT_ASSISTANT_PREFILL
+    :param option_orders: 'matched' presents both blanks' options male-first, then both
+                          female-first (the paper's two conditions); 'all' adds the mixed orders
+    :param input_dir:
+    :param output_dir: ndjson file
+    :param start: 0-based start index (inclusive)
+    :param end: end index (inclusive); if None, processes through last row
+    :param input_file: filename from input_dir
+    :param output_file: explicit NDJSON file path shared by all batches
     """
 
+    if option_orders not in JOINT_OPTION_ORDERS:
+        raise ValueError(f"option_orders must be one of {list(JOINT_OPTION_ORDERS)}, got {option_orders!r}")
+
     logger.add(LOG_DIR / f"data_collection_{datetime.now()}.log")
-    output_fpath = output_dir / f"two_pronouns_measurements_{model_name.split('/')[-1]}_{temperature}.ndjson"
-    
+
+    input_fpath = input_dir / input_file
+
+    # single shared output file
+    if output_file is None:
+        fname_model = model_name.split('/')[-1]
+        dt = datetime.now().strftime('%H%M%d%m%y')
+        output_fpath = output_dir / f"joint_measurements_{fname_model}_{temperature}_{dt}.ndjson"
+    else:
+        output_fpath = output_file
+    output_fpath.parent.mkdir(parents=True, exist_ok=True)
+
+    # file lock for parallel batches
+    try:
+        import fcntl
+        def _lock_file(fh): fcntl.flock(fh, fcntl.LOCK_EX)
+        def _unlock_file(fh): fcntl.flock(fh, fcntl.LOCK_UN)
+    except Exception:
+        def _lock_file(fh): pass
+        def _unlock_file(fh): pass
+
     df = pd.read_csv(input_fpath, sep="\t")
+
+    # Normalize slice
+    n_rows = len(df)
+    start = max(0, start)
+    end_exclusive = n_rows if (end is None or end >= n_rows) else end + 1
+    if start >= end_exclusive:
+        logger.warning(f"No rows to process: start={start}, end={end}. n_rows={n_rows}.")
+        return
+
+    indices = df.index[start:end_exclusive]
+
     mp = ModelProbs(
         mode=mode,
         model_name=model_name,
         key=HF_KEY,
         model_path=MODELS_DIR,
-        quantized=quantized)
-
+        quantized=quantized
+    )
     mp.load_model()
 
-    pbar = tqdm(df.index, desc="Collecting sequential pronouns completions for two pronouns.")
+    pbar = tqdm(indices, desc=f"Collecting Joint Pronouns [{start}-{(end if end is not None else n_rows-1)}]")
 
     for idx in pbar:
         measurements_idx = []
-        # Unpacking CSV -- hard coding for now
-        sentences = {0: df.template_1[idx],
-                     1: df.template_2[idx]}
+
+        sentences = {0: df.template_1[idx], 1: df.template_2[idx]}
         pronouns = {0: ast.literal_eval(df.differences_1[idx]),
                     1: ast.literal_eval(df.differences_2[idx])}
+        cases = {0: df.case_1[idx], 1: df.case_2[idx]}
 
-        
-
-        
         for s_perm in permutations(sentences.keys()):
-
             s1 = sentences[s_perm[0]]
             s2 = sentences[s_perm[1]]
             p1 = pronouns[s_perm[0]]
             p2 = pronouns[s_perm[1]]
+            case1 = cases[s_perm[0]]
+            case2 = cases[s_perm[1]]
 
-            for i, p1_perm in enumerate(permutations(p1)):
-                for j, p2_perm in enumerate(permutations(p2)):
-                    
-                    error_count = 0
-                    for n in tqdm(range(n_runs)):
+            for i, j in JOINT_OPTION_ORDERS[option_orders]:
+                p_list = [p1 if i == 0 else p1[::-1], p2 if j == 0 else p2[::-1]]
+                prompt = role_content_base(*no_game_seq_prompt(p_list, [s1, s2], assistant=assistant))
 
-                        s_list = [s1, s2]
-                        p_list = [list(p1_perm), list(p2_perm)]
-    
-                        prompt = role_content_base(*no_game_seq_prompt(p_list, s_list))
-    
-                        inputs, output = mp.get_completion(prompt=prompt, temperature=temperature, max_new_tokens=12)
-    
-                        input_len = inputs.shape[1]
-    
-                        decoded_output = mp.tokenizer.decode(output.sequences[0][input_len - 5:],
-                                                             skip_special_tokens=True)
-    
-                        try:
-                            json_output = ast.literal_eval(decoded_output)
-    
-                            c = Context(sent_order=s_perm,
-                                        pnoun_order=(i,j),
-                                        sentence_1=s1,
-                                        sentence_2=s2,
-                                        pronouns_1=p1,
-                                        pronouns_2=p2)
+                error_count = 0
+                for _ in tqdm(range(n_runs)):
+                    inputs, output = mp.get_completion(
+                        prompt=prompt,
+                        temperature=temperature,
+                        max_new_tokens=24,
+                        continue_final_message=assistant
+                    )
 
-                            probs = None
+                    # Decode only the generated tokens and put the prefill back in front, rather
+                    # than slicing a fixed number of prompt tokens (which depends on the tokenizer).
+                    generated = mp.tokenizer.decode(output.sequences[0][inputs.shape[1]:],
+                                                    skip_special_tokens=True)
+                    decoded_output = (JOINT_ASSISTANT_PREFILL + generated) if assistant else generated
+                    json_output = parse_joint_completion(decoded_output)
+                    if json_output["BLANK1"] == "None":
+                        error_count += 1
+                        logger.warning(f"Could not parse output: {decoded_output!r}. Error count {error_count}")
 
-                            try:
-                                
-                                first_token, first_logits, second_token, second_logits = mp.pronoun_logits(
-                                        pronouns_list=p_list,
-                                        generated_sequence = output.sequences[0][input_len:],
-                                        scores = output.scores
-                                    )
+                    c = Context(
+                        sent_order=s_perm,
+                        pnoun_order=(i, j),
+                        sentence_1=s1,
+                        sentence_2=s2,
+                        pronouns_1=p1,   # canonical [male, female] order, as in the other collectors
+                        pronouns_2=p2,
+                        case_1=case1,
+                        case_2=case2
+                    )
 
-                                first_ids = mp.tokenizer(p1[1]).input_ids
-                                second_ids = mp.tokenizer(p2[1]).input_ids
+                    m = Measurement(
+                        index=idx,
+                        context=c,
+                        measurement=json_output,
+                        probabilities=None,
+                        logits=None
+                    )
 
-                                first_fem_pnoun_token = first_ids[-1]
-                                second_fem_pnoun_token = second_ids[-1]
+                    measurements_idx.append(m)
 
-                                first_fem_prob = masked_softmax(first_fem_pnoun_token, first_logits[0])
-                                second_fem_prob = masked_softmax(second_fem_pnoun_token, second_logits[0])
+                    # Append one-by-one to the single shared file
+                    with open(output_fpath, "a") as f:
+                        _lock_file(f)
+                        f.write(json.dumps(asdict(m)) + "\n")
+                        f.flush()
+                        os.fsync(f.fileno())
+                        _unlock_file(f)
 
-                                probs = (first_fem_prob.item(), second_fem_prob.item())
-
-                            except Exception as e:
-                                logger.error(f"Probability extraction failed: {e}")
-
-                            m = Measurement(index=idx, context=c, measurement=json_output, probabilities=probs,
-                                            logits=None)
-                            measurements_idx.append(m)
-                            with open(output_fpath, "a") as f:
-                                f.write(json.dumps(asdict(m))+"\n")
-                                
-                        except Exception as e:
-                            error_count += 1
-                            logger.warning(f"Error {e} for output: {decoded_output}. Error count {error_count}/{n}")
-
+                if error_count > 0:
                     logger.warning(f"{error_count}/{n_runs} not captured.")
-        logger.info(f"Successfully collected {idx}. "
-                    f"Writing {len(measurements_idx)} measurements to {output_fpath}.")
 
-    return
+        logger.info(f"Successfully collected {idx}. Writing {len(measurements_idx)} measurements to {output_fpath}.")
 
 
 # TODO: Add capability to extract additional pronouns
@@ -530,7 +598,6 @@ def generate_one_null_context(mode: str,
     """
 
     logger.add(LOG_DIR / f"data_collection_{datetime.now()}.log")
-
 
     input_fpath = input_dir / input_file
 

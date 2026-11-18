@@ -172,7 +172,8 @@ def get_index(index: int,
 
     if filter_none:
         string_only = [d for d in all_measurements if isinstance(d['measurement'], dict)]
-        no_none = [d for d in string_only if d['measurement']['BLANK'] != "None"]
+        # Any unparsed blank ('BLANK', or 'BLANK1'/'BLANK2' for joint measurements) marks an error
+        no_none = [d for d in string_only if all(v != "None" for v in d['measurement'].values())]
         return no_none
     else:
         return all_measurements
