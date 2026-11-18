@@ -8,9 +8,9 @@ and by the social-science contextuality literature, in which **both** variables 
 jointly in each context. That is what this module computes.
 
 Both formulations are instances of the same object -- a cyclic system of rank n -- so a
-single implementation serves both, and the two ΔC values are directly comparable. The
-existing steering code (winogender_contextuality.modeling.contextuality) is left untouched
-and is imported by revisions.joint_measurement for the side-by-side.
+single implementation serves both, and the two ΔC values are directly comparable. It is
+written from the CbD definitions rather than from the package code, and the tests use it to
+cross-check the package's estimators (winogender_contextuality.modeling.contextuality).
 
 Definitions (Dzhafarov, Kujala & Cervantes; Kujala & Dzhafarov 2016)
 -------------------------------------------------------------------

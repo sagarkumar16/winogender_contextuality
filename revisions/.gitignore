@@ -1,9 +1,3 @@
-# Measurement NDJSONs and analysis results are regenerated, not versioned.
-outputs/**
+# Measurement NDJSONs, analysis results and logs are regenerated, not versioned.
+outputs/
 logs/
-
-# ...except the referent-only primes: they are small, deterministic, and are an INPUT to the
-# GPU collection runs, so the cluster job can use them without rebuilding.
-!outputs/
-!outputs/primes/
-!outputs/primes/**
