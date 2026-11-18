@@ -220,6 +220,16 @@ one aligner per table), and `get_null_divergences` refuses input that has not be
 * **Null divergences** compared each null prime against the unprimed baseline of the other
   sentence (`align_null_counts`). With synthetic responses on the real templates and a null
   prime that has no effect, the aligned null KL is ~0; the old positional pairing gives 0.58 bits.
+* **Stereotype correlations** correlated each sentence's P(female) with the stereotype of its
+  pair-mate's referent, because `all_features` was in sentence order. It is now reordered into
+  item order right after it is built (`align_features_to_items`).
+* **Mutual information** reads the same table through `create_feature_table`. For role type the
+  swap is only a relabelling, which MI is invariant to, but rows with a missing stereotype are
+  dropped *before* MI is computed, so the wrong sentence's measurements were dropped whenever
+  exactly one referent of a pair had no stereotype. Fixed by the same reordering: every feature
+  row's role is now the referent of its item's free sentence (before: 0/360).
+
+**Re-run the divergence, stereotype-correlation and MI figures.**
 
 ### Still outstanding — not a CbD defect, so left alone
 
