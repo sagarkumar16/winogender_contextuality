@@ -72,7 +72,8 @@ covered every sentence.)
 
 Defects 1, 2 and 4–6 are FIXED in `winogender_contextuality/modeling/contextuality.py`;
 defect 3 is fixed in `collect_sequential.py` for future runs, but the null files already
-collected keep their bad logits. Most of them affect published numbers, so all of them need a
+collected keep their bad logits; the remaining defects are FIXED in the paper notebook. Most of
+them affect published numbers, so all of them need a
 decision before the response letter goes out.
 
 Every fixed function is cross-checked against `revisions/cbd.py`, an independent implementation
@@ -193,6 +194,13 @@ on it. Reordering the array would have silently broken the contextual-fraction c
 internally, and swaps the two marginals in the contexts where the lower-indexed content variable
 is the sentence-2 pronoun. (The correlation is symmetric in its marginals, so only the
 disturbance pairing changes.)
+
+### 7. The null divergence bars showed P(female), not KL — FIXED
+
+`get_null_divergences` in the paper notebook computed `null1_kl` / `null2_kl` but appended
+`null1_prob` / `null2_prob`, so the `c_null` bars in the divergence figures were mean
+P(female | null prime), plotted next to the KL divergences of `c_m` / `c_f`. It now returns KLs
+in all four columns. **Re-run the divergence figures.**
 
 ### Still outstanding — not a CbD defect, so left alone
 
