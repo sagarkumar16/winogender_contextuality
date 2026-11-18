@@ -6,6 +6,7 @@ original analysis code while preparing them.
 ```
 revisions/
   build_refnull_inputs.py   builds the referent-only null primes (no GPU)
+  slurm/collect.sh          collection for all three experiments
   cbd.py                    independent CbD implementation, used to cross-check the package's ΔC functions
   tests/                    `pytest revisions/tests`: CbD cross-checks, and the real collectors run
                             against a fake model (needs torch + transformers, not a GPU or data)
@@ -16,6 +17,26 @@ so the new runs use the published prompts and loops. The analyses are the "Revis
 the end of `notebooks/13-sk-paper-figures.ipynb`.
 
 ## Experiments
+
+### Running on the cluster
+
+Everything goes through `revisions/slurm/collect.sh`, with the published scripts' batching, temperature
+(0.5) and 50 runs, and the row count read from the input file. Outputs are written to `$DATA_DIR`, next to
+the inputs, which is where the notebook's `INTERIM_DATA_DIR` should point.
+
+```bash
+# gpt-oss-20b unquantized: the paper's primed and null runs, MoE weights dequantized to bf16
+MODEL=openai/gpt-oss-20b QUANTIZED=false SUFFIX=_bf16 CONDITION=primed sbatch revisions/slurm/collect.sh
+MODEL=openai/gpt-oss-20b QUANTIZED=false SUFFIX=_bf16 CONDITION=null   sbatch revisions/slurm/collect.sh
+
+# referent-only null primes and joint measurement, once per paper model
+MODEL=openai/gpt-oss-20b CONDITION=refnull sbatch revisions/slurm/collect.sh
+MODEL=openai/gpt-oss-20b CONDITION=joint   sbatch revisions/slurm/collect.sh
+```
+
+Keep each model's quantization as in the paper: `QUANTIZED=false` for `google/gemma-3-12b-it`, the default
+(4-bit; MXFP4 for gpt-oss) for the others. A job that times out resumes with `START_ROW=<first unfinished
+batch>` after deleting the records of the batch it was in the middle of.
 
 ### gpt-oss-20b unquantized
 
@@ -34,9 +55,9 @@ deterministic, so their differences are the pure precision effect), `gpt_oss_qua
 Each sentence is primed with *"The {first} and the {second} were both present."*, naming its pair's two
 referents in the order the sentence mentions them, and no pronoun. The input,
 `all_sentences_wp_refnull.csv`, is built by `python -m revisions.build_refnull_inputs --pairs ... --output ...`
-in the same row order as `all_sentences_wp.csv`. Collection is the generic-null collector,
-`generate_one_null_context`, with `prime_column="prime"` and `tag="refnull"`, so prompts and loop are
-identical to the null runs; records are tagged `refnull_0`.
+in the same row order as `all_sentences_wp.csv` (`collect.sh` runs it when the file is missing).
+Collection is the generic-null collector, `generate_one_null_context`, with `prime_column="prime"` and
+`tag="refnull"`, so prompts and loop are identical to the null runs; records are tagged `refnull_0`.
 
 The notebook reports KL against the same sentence's unprimed baseline next to `c_m`, `c_f`, `c_null1`,
 `c_null2`, with Wilcoxon tests of `c_ref` against the contextual and generic-null primes
