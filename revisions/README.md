@@ -202,6 +202,25 @@ disturbance pairing changes.)
 P(female | null prime), plotted next to the KL divergences of `c_m` / `c_f`. It now returns KLs
 in all four columns. **Re-run the divergence figures.**
 
+### 8. The notebook paired rows by position across two different orders — FIXED
+
+Two orderings live side by side in `notebooks/13-sk-paper-figures.ipynb`:
+
+* **item order**, which `primed_completion_differences()` / `primed_completion_difference_counts()`
+  emit and `create_feature_table()`'s `2*index` / `2*index + 1` lookup assumes: pair `k`
+  contributes sentence order `[0,1]` (free sentence = `template_2`) and then `[1,0]`
+  (free = `template_1`);
+* **sentence order**, `template_1` then `template_2`: `all_sentences_wp.csv`, and therefore every
+  null run, and `new_templates.tsv`, and therefore `all_features`.
+
+Wherever the two were zipped together by position, every sentence was matched with the *other*
+sentence of its pair. The notebook now joins on sentence text instead (`primed_item_keys` plus
+one aligner per table), and `get_null_divergences` refuses input that has not been aligned.
+
+* **Null divergences** compared each null prime against the unprimed baseline of the other
+  sentence (`align_null_counts`). With synthetic responses on the real templates and a null
+  prime that has no effect, the aligned null KL is ~0; the old positional pairing gives 0.58 bits.
+
 ### Still outstanding — not a CbD defect, so left alone
 
 * `generate_two_pronouns` constructs `Context` without `case_1`/`case_2`, which are required
@@ -435,10 +454,11 @@ well defined and is reported for the contextual condition (`delta_c_contextual_{
 | `three_condition_summary.csv/.tex` | per model: mean/median KL by condition, the `refnull_over_contextual` / `null_over_contextual` ratios, and mean disturbance |
 | `three_conditions.pdf` | KL distributions by condition |
 
-**Row alignment.** Null-style runs are indexed per *sentence slot*, not per pair: row `2k` is
-pair `k`'s sentence-order-`[0,1]` item (free sentence = `template_2`) and row `2k+1` is its
-`[1,0]` item. The primes CSV carries `pair_index` and `free_slot` explicitly so the join is on
-metadata, not on position (`test_primes.py::test_row_order_and_sent_order_mapping` pins it).
+**Row alignment — WRONG for the existing null runs; revisit with this experiment.** The
+primes CSV generated here puts row `2k` = free sentence `template_2`. But the published
+`all_sentences_wp.csv` puts row `2k` = `template_1`, so `referent_null.null_row_for` reads the
+generic-null baseline from the wrong sentence of each pair. Join on the free sentence text, as
+the notebook's `align_null_counts` now does (defect 8).
 
 ---
 
