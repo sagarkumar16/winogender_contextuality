@@ -12,6 +12,35 @@ logger.info(torch.version.cuda)
 for i in range(torch.cuda.device_count()):
     logger.info(torch.cuda.get_device_properties(i))
 
+
+def is_gpt_oss(model_name: str) -> bool:
+    return "gpt-oss" in model_name.lower()
+
+
+def check_dequantized(model: torch.nn.Module) -> None:
+    """
+    Raises if any MXFP4 weights survived loading a gpt-oss model "unquantized".
+
+    MXFP4 experts are stored as packed uint8 `*_blocks` / `*_scales` tensors in Mxfp4* modules;
+    dequantized experts are plain bf16 parameters. Checking both catches either way MXFP4 could
+    sneak back in (kernels present, or a transformers change in how dequantize is honoured).
+
+    :param model: a loaded gpt-oss model
+    """
+    mxfp4_modules = sorted({type(m).__name__ for m in model.modules() if "mxfp4" in type(m).__name__.lower()})
+    expert_tensors = [(n, t) for n, t in list(model.named_parameters()) + list(model.named_buffers())
+                      if ".experts." in n]
+    not_bf16 = [n for n, t in expert_tensors if t.dtype != torch.bfloat16]
+
+    if mxfp4_modules or not expert_tensors or not_bf16:
+        raise RuntimeError(
+            "gpt-oss was asked to load unquantized but is not plain bf16: "
+            f"MXFP4 modules {mxfp4_modules}, {len(expert_tensors)} expert tensors, "
+            f"non-bf16 expert tensors {not_bf16[:5]}"
+        )
+    logger.info(f"gpt-oss loaded dequantized: {len(expert_tensors)} expert tensors, all bf16")
+
+
 def load_model(model_name: str,
                api_key: str,
                quantized: bool,
@@ -34,12 +63,24 @@ def load_model(model_name: str,
 
     if not quantized:
         logger.info("Loading full-precision model", flush=True)
+        extra_kwargs = {}
+        if is_gpt_oss(model_name):
+            # gpt-oss ships its MoE weights in MXFP4 and its config.json declares that quantization,
+            # so a plain from_pretrained() keeps them in MXFP4 whenever the MXFP4 kernels are
+            # available. Dequantize explicitly, to bf16 (the dtype of its non-MoE weights). MXFP4
+            # values are exactly representable in bf16, so this is the same weights computed at
+            # higher precision.
+            extra_kwargs = dict(quantization_config=Mxfp4Config(dequantize=True),
+                                torch_dtype=torch.bfloat16)
         model = AutoModelForCausalLM.from_pretrained(
             model_name,
             token=api_key,
             cache_dir=cache_dir,
-            device_map="auto"
+            device_map="auto",
+            **extra_kwargs
         )
+        if is_gpt_oss(model_name):
+            check_dequantized(model)
         model.config.use_cache = False
         logger.info(f"Model cached in {cache_dir}", flush=True)
         return model

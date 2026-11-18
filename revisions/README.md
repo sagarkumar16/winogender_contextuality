@@ -6,8 +6,27 @@ original analysis code while preparing them.
 ```
 revisions/
   cbd.py      independent CbD implementation, used to cross-check the package's ΔC functions
-  tests/      pytest suite for the CbD fixes: `pytest revisions/tests` (no GPU or data needed)
+  tests/      `pytest revisions/tests`: CbD cross-checks and the gpt-oss dequantization check
+              (no GPU or data needed)
 ```
+
+The collectors themselves are the package's own (`winogender_contextuality/modeling/collect_sequential.py`),
+so the new runs use the published prompts and loops. The analyses are the "Revision experiments" section at
+the end of `notebooks/13-sk-paper-figures.ipynb`.
+
+## Experiments
+
+### gpt-oss-20b unquantized
+
+Before this change `quantized=False` did not reliably unquantize gpt-oss: its `config.json` declares MXFP4,
+so `from_pretrained()` kept MXFP4 whenever the kernels were available. `run_local.load_model` now passes
+`Mxfp4Config(dequantize=True)` and bf16 for gpt-oss, and `check_dequantized()` raises right after loading if
+any MXFP4 module or non-bf16 expert weight survived.
+
+For the response letter: gpt-oss is *released* in MXFP4, and MXFP4 values are exactly representable in bf16,
+so the dequantized weights have the same values. This arm tests compute precision, not information lost to
+quantization. Notebook outputs: per-arm summary, item-level agreement (internal probabilities are
+deterministic, so their differences are the pure precision effect), `gpt_oss_quantization_scatter.pdf`.
 
 ---
 
