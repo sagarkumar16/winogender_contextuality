@@ -59,14 +59,12 @@ safe to re-run as jobs finish. Experiment 4 needs no new collection — it reads
 Each collection script takes its knobs from the environment (`MODEL`, `TEMP`, `N_RUNS`,
 `SEED`, `BATCH_SIZE`, `DATA_DIR`), defaulting to the paper's values (temperature 0.5,
 50 runs, batches of 10). They **derive the row count from the input file** rather than
-hardcoding it — see the warning below.
+hardcoding it.
 
-> **Check this before launching the null runs.** The existing `collect_null.sh` hardcodes
-> `N_ROWS=181`, but its input `all_sentences_wp.csv` is indexed **per sentence**, not per pair,
-> and the paper notebook reads null data with `max_index=360`. If that file has ~362 rows, the
-> published null runs covered only its first half. I could not check — the file is not in the
-> repo. My scripts read the row count off the file, so they are not exposed to this, but the
-> existing null results may be.
+(An earlier version of this README warned that `collect_null.sh`'s `N_ROWS=181` meant the
+published null runs covered only half of the per-sentence `all_sentences_wp.csv`. That was a
+false alarm: the paper notebook's null files run through row index 361, so the published runs
+covered every sentence.)
 
 ---
 
