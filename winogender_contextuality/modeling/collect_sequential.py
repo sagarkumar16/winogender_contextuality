@@ -259,7 +259,10 @@ def generate_one_pronoun(
                             ))
 
                             model_logits = mp.get_raw_logits(prompt=prompt).cpu()
-                            pronoun_idxs = mp.get_token_ids(options=pronouns[1])
+                            # Options of the FREE sentence (s2), in canonical [male, female] order.
+                            # This used to be pronouns[1] (always template_2's options), which is
+                            # only right when both sentences of a pair share a grammatical case.
+                            pronoun_idxs = mp.get_token_ids(options=p2)
                             pronoun_logits = model_logits[[sum(pronoun_idxs, [])]].tolist()
 
                             inputs, output = mp.get_completion(
@@ -442,7 +445,8 @@ def generate_one_pronoun_noprompt(
                             ))
 
                             model_logits = mp.get_raw_logits(prompt=prompt).cpu()
-                            pronoun_idxs = mp.get_token_ids(options=pronouns[1])
+                            # Options of the FREE sentence (s2), in canonical [male, female] order.
+                            pronoun_idxs = mp.get_token_ids(options=p2)
                             pronoun_logits = model_logits[[sum(pronoun_idxs, [])]].tolist()
 
                             inputs, output = mp.get_completion(

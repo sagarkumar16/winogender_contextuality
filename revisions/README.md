@@ -142,13 +142,18 @@ pronoun_idxs = mp.get_token_ids(options=pronouns[1])   # pronouns[1] is the STRI
 
 `get_token_ids` iterates its argument, so it tokenises `'s'`, `'h'`, `'e'` and the `logits`
 field of every existing `null_measurements_*.ndjson` is a 3-vector over those characters, not
-a 2-vector over `['he','she']`. (`generate_one_pronoun` is fine: there `pronouns` is a *dict*,
-so `pronouns[1]` is the option list.)
+a 2-vector over `['he','she']`. (In `generate_one_pronoun`, `pronouns` is a *dict*, so
+`pronouns[1]` is at least an option list; see the note below.)
 
 The published null analysis uses generation counts, so this defect does not touch it. No
 logit-based null quantity can be computed from the existing files. `generate_one_null_context`
 now passes the whole option list, so null runs collected from now on store a proper 2-vector
 over `['he','she']`.
+
+`generate_one_pronoun` (and `generate_one_pronoun_noprompt`) had a milder version: they took
+logits for `pronouns[1]`, the options of `template_2`, even when the free sentence was
+`template_1`. Every WinoPron pair uses the same case in both sentences, so the published logits
+are unaffected, but they now use the free sentence's own options (`p2`).
 
 ### 4. `calculate_sentence_nc_fraction` had the identical `(V1, V2)` defect — FIXED
 
