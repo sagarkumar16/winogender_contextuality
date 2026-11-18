@@ -581,7 +581,11 @@ def generate_one_null_context(mode: str,
                     ))
 
                     model_logits = mp.get_raw_logits(prompt=prompt).cpu()
-                    pronoun_idxs = mp.get_token_ids(options=pronouns[1])
+                    # Here `pronouns` is already the option LIST (e.g. ['he', 'she']), so it is
+                    # passed whole. This used to be pronouns[1] -- the string 'she' -- which
+                    # tokenised the characters 's', 'h', 'e', so null runs collected before this
+                    # fix store 3 logits over those characters and have no usable internal probs.
+                    pronoun_idxs = mp.get_token_ids(options=pronouns)
                     pronoun_logits = model_logits[[sum(pronoun_idxs, [])]].tolist()
 
                     inputs, output = mp.get_completion(

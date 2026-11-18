@@ -68,12 +68,12 @@ covered every sentence.)
 
 ---
 
-## Read this first: six defects found in the existing analysis code
+## Read this first: defects found in the existing code
 
-Found while building the comparison. **Five are now FIXED** in
-`winogender_contextuality/modeling/contextuality.py`; defect 3 is a property of
-already-collected data files and cannot be fixed by code. All of them affect published numbers,
-so all of them need a decision before the response letter goes out.
+Defects 1, 2 and 4–6 are FIXED in `winogender_contextuality/modeling/contextuality.py`;
+defect 3 is fixed in `collect_sequential.py` for future runs, but the null files already
+collected keep their bad logits. Most of them affect published numbers, so all of them need a
+decision before the response letter goes out.
 
 Every fixed function is cross-checked against `revisions/cbd.py`, an independent implementation
 written from the CbD definitions rather than from the original code
@@ -131,7 +131,7 @@ free targets transposed. It was harmless in practice — both sentences of a pai
 grammatical case, so the two target strings coincide — but it was load-bearing on that
 coincidence, and now it is not.
 
-### 3. The null runs store logits over the characters of "she" — NOT fixable in code
+### 3. The null runs store logits over the characters of "she" — FIXED for future runs only
 
 `collect_sequential.generate_one_null_context` does:
 
@@ -145,10 +145,10 @@ field of every existing `null_measurements_*.ndjson` is a 3-vector over those ch
 a 2-vector over `['he','she']`. (`generate_one_pronoun` is fine: there `pronouns` is a *dict*,
 so `pronouns[1]` is the option list.)
 
-The published null analysis uses generation counts, so **its numbers stand**. But no
-logit-based null quantity can be computed from the existing files — the fix has to happen at
-collection time, and only for data collected from now on. Experiment 3 is therefore reported on
-generation counts, and our new referent-null collector stores proper 2-vectors.
+The published null analysis uses generation counts, so this defect does not touch it. No
+logit-based null quantity can be computed from the existing files. `generate_one_null_context`
+now passes the whole option list, so null runs collected from now on store a proper 2-vector
+over `['he','she']`.
 
 ### 4. `calculate_sentence_nc_fraction` had the identical `(V1, V2)` defect — FIXED
 
