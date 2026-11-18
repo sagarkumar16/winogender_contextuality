@@ -181,3 +181,5 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 
+# Configuration file
+winogender_contextuality/config.py

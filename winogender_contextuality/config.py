@@ -13,7 +13,7 @@ PROJ_ROOT = Path(__file__).resolve().parents[1]
 logger.info(f"PROJ_ROOT path is: {PROJ_ROOT}")
 
 #### ADJUST FOR YOUR MACHINE ####
-DATA_ROOT = Path("/data_users1/sagar/winogender_contextuality")
+DATA_ROOT = Path("/data/sagar/winogender_contextuality/")
 logger.info(f"DATA_ROOT path is: {DATA_ROOT}")
 
 DATA_DIR = DATA_ROOT / "data"
