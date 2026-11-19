@@ -34,6 +34,10 @@ MODEL=openai/gpt-oss-20b CONDITION=refnull sbatch revisions/slurm/collect.sh
 MODEL=openai/gpt-oss-20b CONDITION=joint   sbatch revisions/slurm/collect.sh
 ```
 
+To submit all of them at once, `HF_KEY=... bash revisions/slurm/submit_all.sh` queues every run above
+(refnull and joint for each paper model, then the two gpt-oss bf16 runs) as its own job, each starting when
+the previous one ends, even if it failed (`DRY_RUN=1` prints the `sbatch` commands instead).
+
 Keep each model's quantization as in the paper: `QUANTIZED=false` for `google/gemma-3-12b-it`, the default
 (4-bit; MXFP4 for gpt-oss) for the others. A job that times out resumes with `START_ROW=<first unfinished
 batch>` after deleting the records of the batch it was in the middle of.
