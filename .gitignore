@@ -142,7 +142,7 @@ celerybeat.pid
 # Environments
 /wcvenv/
 wcenv.bak
-wcenv/
+wcenv
 
 # Spyder project settings
 .spyderproject

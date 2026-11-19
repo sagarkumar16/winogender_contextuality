@@ -20,7 +20,7 @@ accelerate
 bitsandbytes
 requests
 pyyaml
-transformers
+transformers[chat-template,kernels]>=5.23  # see the note at the end
 xarray
 torch
 ipykernel
@@ -29,13 +29,24 @@ protobuf
 sentencepiece
 
 # --- Added for the EMNLP revision experiments (revisions/) ---
-# Both are already imported by the existing package but were never declared:
+# Imported by the existing code but never declared:
 #   scipy       -- winogender_contextuality/modeling/contextuality.py (linprog, softmax)
 #   statsmodels -- winogender_contextuality/utils.py (proportion_confint)
+#   seaborn     -- notebooks/13-sk-paper-figures.ipynb and several testing notebooks
+#   openpyxl    -- notebooks/testing-notebooks/10-sk-bias-tests.ipynb (pd.read_excel of cpsa2024.xlsx)
+#   anthropic   -- winogender_contextuality/modeling/run_api.py (not used by the collectors)
 # Without statsmodels installed, `import winogender_contextuality.utils` fails outright.
 scipy
 statsmodels
-#   kernels     -- MXFP4 kernels for gpt-oss. Without it transformers silently dequantizes the
-#                  "quantized" gpt-oss runs to bf16 (run_local.check_mxfp4 now raises instead).
-#                  Version range is the one transformers 5.x accepts.
-kernels>=0.18.2,<0.19
+seaborn
+openpyxl
+anthropic
+
+# transformers[chat-template,kernels]>=5.23, above:
+#   >=5.23         the version the collectors were tested with. 5.x is why ModelProbs passes
+#                  return_dict=False to apply_chat_template; the bound also makes
+#                  `pip install -r` upgrade an older transformers instead of keeping it.
+#   kernels        MXFP4 kernels for gpt-oss, in the version range this transformers accepts.
+#                  Without them transformers silently dequantizes the "quantized" gpt-oss runs
+#                  to bf16 (run_local.check_mxfp4 now raises instead).
+#   chat-template  jinja2, which apply_chat_template needs
