@@ -331,7 +331,7 @@ def generate_one_pronoun(
                             # This used to be pronouns[1] (always template_2's options), which is
                             # only right when both sentences of a pair share a grammatical case.
                             pronoun_idxs = mp.get_token_ids(options=p2)
-                            pronoun_logits = model_logits[[sum(pronoun_idxs, [])]].tolist()
+                            pronoun_logits = model_logits[sum(pronoun_idxs, [])].tolist()
 
                             inputs, output = mp.get_completion(
                                 prompt=prompt,
@@ -515,7 +515,7 @@ def generate_one_pronoun_noprompt(
                             model_logits = mp.get_raw_logits(prompt=prompt).cpu()
                             # Options of the FREE sentence (s2), in canonical [male, female] order.
                             pronoun_idxs = mp.get_token_ids(options=p2)
-                            pronoun_logits = model_logits[[sum(pronoun_idxs, [])]].tolist()
+                            pronoun_logits = model_logits[sum(pronoun_idxs, [])].tolist()
 
                             inputs, output = mp.get_completion(
                                 prompt=prompt,
@@ -674,7 +674,7 @@ def generate_one_null_context(mode: str,
                     # tokenised the characters 's', 'h', 'e', so null runs collected before this
                     # fix store 3 logits over those characters and have no usable internal probs.
                     pronoun_idxs = mp.get_token_ids(options=pronouns)
-                    pronoun_logits = model_logits[[sum(pronoun_idxs, [])]].tolist()
+                    pronoun_logits = model_logits[sum(pronoun_idxs, [])].tolist()
 
                     inputs, output = mp.get_completion(
                         prompt=prompt,

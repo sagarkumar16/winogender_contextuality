@@ -70,7 +70,9 @@ class ModelProbs:
             raise NotImplementedError
 
         else:
-            inputs = self.tokenizer.apply_chat_template(prompt, return_tensors="pt", continue_final_message=True).to(self.gpu)
+            # return_dict=False: transformers >= 5 returns a BatchEncoding by default, not the id tensor
+            inputs = self.tokenizer.apply_chat_template(prompt, return_tensors="pt", continue_final_message=True,
+                                                        return_dict=False).to(self.gpu)
             with torch.no_grad():
                 outputs = self.model(inputs)
 
@@ -136,8 +138,10 @@ class ModelProbs:
             raise NotImplementedError
 
         else:
+            # return_dict=False: transformers >= 5 returns a BatchEncoding by default, not the id tensor
             inputs = (self.tokenizer.apply_chat_template(prompt, return_tensors="pt",
-                                                         continue_final_message=continue_final_message)
+                                                         continue_final_message=continue_final_message,
+                                                         return_dict=False)
                       .to(self.gpu))
 
             outputs = self.model.generate(inputs, **generation_args)

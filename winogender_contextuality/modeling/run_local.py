@@ -41,6 +41,25 @@ def check_dequantized(model: torch.nn.Module) -> None:
     logger.info(f"gpt-oss loaded dequantized: {len(expert_tensors)} expert tensors, all bf16")
 
 
+def check_mxfp4(model: torch.nn.Module) -> None:
+    """
+    Raises if a gpt-oss model asked to load in MXFP4 came back dequantized.
+
+    transformers falls back to bf16 with only a warning when the `kernels` package is missing or
+    the GPU is unsupported, which would silently put a "quantized" run in the bf16 condition.
+
+    :param model: a loaded gpt-oss model
+    """
+    mxfp4_modules = sorted({type(m).__name__ for m in model.modules() if "mxfp4" in type(m).__name__.lower()})
+    if not mxfp4_modules:
+        raise RuntimeError(
+            "gpt-oss was asked to load in MXFP4 but transformers dequantized it to bf16 (see its warning "
+            "above; usually the `kernels` package is missing). Install a compatible `kernels`, or run "
+            "with quantized=False for the bf16 condition."
+        )
+    logger.info(f"gpt-oss loaded in MXFP4: {mxfp4_modules}")
+
+
 def load_model(model_name: str,
                api_key: str,
                quantized: bool,
@@ -71,7 +90,7 @@ def load_model(model_name: str,
             # values are exactly representable in bf16, so this is the same weights computed at
             # higher precision.
             extra_kwargs = dict(quantization_config=Mxfp4Config(dequantize=True),
-                                torch_dtype=torch.bfloat16)
+                                dtype=torch.bfloat16)
         model = AutoModelForCausalLM.from_pretrained(
             model_name,
             token=api_key,
@@ -104,6 +123,7 @@ def load_model(model_name: str,
             device_map="auto",
             quantization_config=qcfg,   # only MXFP4
         )
+        check_mxfp4(model)
         model.config.use_cache = False
         logger.info(f"Model cached in {cache_dir}", flush=True)
         return model

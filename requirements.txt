@@ -35,3 +35,7 @@ sentencepiece
 # Without statsmodels installed, `import winogender_contextuality.utils` fails outright.
 scipy
 statsmodels
+#   kernels     -- MXFP4 kernels for gpt-oss. Without it transformers silently dequantizes the
+#                  "quantized" gpt-oss runs to bf16 (run_local.check_mxfp4 now raises instead).
+#                  Version range is the one transformers 5.x accepts.
+kernels>=0.18.2,<0.19
