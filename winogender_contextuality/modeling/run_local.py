@@ -76,9 +76,11 @@ def load_model(model_name: str,
     cache_dir = Path(model_path) / "cache"   # <-- fix: ensure correct Path usage
     cache_dir.mkdir(parents=True, exist_ok=True)
 
-    # Connect with Hugging Face
-    huggingface_hub.login(api_key)
-    logger.info("Connected with Hugging Face", flush=True)
+    # Connect with Hugging Face. Without a key, from_pretrained uses the local cache (run with
+    # HF_HUB_OFFLINE=1 for gated models); login(None) would wait for the token at a prompt.
+    if api_key:
+        huggingface_hub.login(api_key)
+        logger.info("Connected with Hugging Face", flush=True)
 
     if not quantized:
         logger.info("Loading full-precision model", flush=True)

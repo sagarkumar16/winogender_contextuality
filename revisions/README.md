@@ -7,6 +7,8 @@ original analysis code while preparing them.
 revisions/
   build_refnull_inputs.py   builds the referent-only null primes (no GPU)
   slurm/collect.sh          collection for all three experiments
+  run_local.sh              the same collections one after another on a local GPU (no SLURM)
+  resume_point.py           where collect.sh continues a stopped collection, without duplicates
   cbd.py                    independent CbD implementation, used to cross-check the package's ΔC functions
   tests/                    `pytest revisions/tests`: CbD cross-checks, and the real collectors run
                             against a fake model (needs torch + transformers, not a GPU or data)
@@ -39,8 +41,45 @@ To submit all of them at once, `HF_KEY=... bash revisions/slurm/submit_all.sh` q
 the previous one ends, even if it failed (`DRY_RUN=1` prints the `sbatch` commands instead).
 
 Keep each model's quantization as in the paper: `QUANTIZED=false` for `google/gemma-3-12b-it`, the default
-(4-bit; MXFP4 for gpt-oss) for the others. A job that times out resumes with `START_ROW=<first unfinished
-batch>` after deleting the records of the batch it was in the middle of.
+(4-bit; MXFP4 for gpt-oss) for the others.
+
+A batch that fails (a transient CUDA error, say) is retried twice from the row it stopped in. To continue a
+job that timed out or gave up, resubmit it with `START_ROW=auto`: `revisions/resume_point.py` finds the first
+incomplete row of the output file (records are appended one at a time, so only the row it stopped in can be
+partial), removes that row's records and continues there; a finished file is left alone. Without
+`START_ROW`, `collect.sh` refuses to append to an output file that already exists.
+
+### Running locally
+
+`revisions/run_local.sh` runs a list of collections one after another through `collect.sh`, logging each to
+`logs/<model>_<condition><suffix>.log`. As checked in, it runs every experiment on Llama-3.1-8B-Instruct,
+about 17 h on an RTX A5000 (24 GB): refnull and joint in 4-bit as in the paper, and the quantization arm
+(primed and null, `QUANTIZED=false`, `_bf16`). Gemma-3-12b in bf16 does not fit in 24 GB: with CPU offload it
+takes 3 s per record, against 0.2 s for Llama. Without `HF_KEY` it loads the cached weights offline.
+
+```bash
+nohup setsid bash revisions/run_local.sh >> logs/run_local.out 2>&1 &
+grep '^===' logs/run_local.out    # progress: one line per run started / finished / failed
+```
+
+Each run uses `START_ROW=auto`, so after a failure or a reboot the same command continues every unfinished
+collection and skips the finished ones.
+
+On 2026-11-23 the first local refnull run died at row 78 with `CUDA error: unspecified launch failure`, in the
+middle of a row whose first 33 identical prompts had gone through: a GPU fault, not the prompt. The GPU is
+shared (another account's Ollama server was using it) and ran at its power limit; the kernel log, which would
+show the Xid, needs root.
+
+### Llama-3.1-8B unquantized
+
+The quantization arm run locally. The paper ran Llama in bitsandbytes 4-bit nf4 (the collectors' default):
+recomputing the logits of paper records, which are deterministic, matches the current 4-bit load to within
+0.17 and misses bf16 by 1–3. (The paper's values sit on the fp16 grid: under bitsandbytes, transformers 4.x
+loaded the unquantized modules in fp16, where transformers 5 keeps bf16.) Unlike gpt-oss, nf4 rounds the
+weights, so this arm compares different weights, not only compute precision. The rerun draws 50 samples per
+primed context against the paper's 250 (100 against 500 unprimed), so its generation P(female) is noisier;
+internal probabilities are not. The notebook's quantization cells take `quant_model` and `quant_arm_names`, so the gpt-oss arm runs
+through the same cells.
 
 ### gpt-oss-20b unquantized
 
