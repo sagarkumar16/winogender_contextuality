@@ -59,8 +59,13 @@ takes 3 s per record, against 0.2 s for Llama. Without `HF_KEY` it loads the cac
 
 ```bash
 nohup setsid bash revisions/run_local.sh >> logs/run_local.out 2>&1 &
+nohup setsid bash revisions/run_local.sh "microsoft/phi-4 joint true" >> logs/run_local.out 2>&1 &   # only this run
 grep '^===' logs/run_local.out    # progress: one line per run started / finished / failed
 ```
+
+Runs given as arguments (one quoted `"model condition quantized [suffix]"` each) replace the default Llama
+list. Phi-4 fits only in 4-bit (as in the paper: its paper logits match the 4-bit load to within 0.3); its
+joint run takes about 6 h.
 
 Each run uses `START_ROW=auto`, so after a failure or a reboot the same command continues every unfinished
 collection and skips the finished ones.

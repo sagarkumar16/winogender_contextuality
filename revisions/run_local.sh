@@ -4,13 +4,15 @@
 # Every run continues its output file where it stops (START_ROW=auto in collect.sh) and skips it
 # if it is finished, so after a failure or a reboot, just run this again.
 #
-#   bash revisions/run_local.sh
-#   nohup setsid bash revisions/run_local.sh > logs/run_local.out 2>&1 &    # keeps running after logout
+#   bash revisions/run_local.sh                                  # the default runs, listed below
+#   bash revisions/run_local.sh "microsoft/phi-4 joint true"     # only the runs given, one quoted
+#                                                                # "model condition quantized [suffix]" each
+#   nohup setsid bash revisions/run_local.sh >> logs/run_local.out 2>&1 &   # keeps running after logout
 #
 # Without HF_KEY the weights must already be in the cache (all four models are on this machine), and
 # the Hub is not contacted (HF_HUB_OFFLINE=1): a gated model like Llama is refused without a token.
 #
-# The runs below are every revision experiment on Llama-3.1-8B-Instruct, about 17 h on an RTX A5000:
+# The default runs are every revision experiment on Llama-3.1-8B-Instruct, about 17 h on an RTX A5000:
 #   refnull, joint   4-bit (bitsandbytes nf4), as Llama ran in the paper (2 h + 2.5 h)
 #   primed, null     unquantized (bf16): the quantization arm, compared with the paper's 4-bit runs (6.5 h + 5 h)
 #
@@ -40,6 +42,9 @@ RUNS=(
   "meta-llama/Llama-3.1-8B-Instruct   primed    false   _bf16"
   "meta-llama/Llama-3.1-8B-Instruct   null      false   _bf16"
 )
+if (( $# )); then
+  RUNS=("$@")
+fi
 
 names=()
 for spec in "${RUNS[@]}"; do
